@@ -19,12 +19,11 @@ struct CashflowView: View {
     @State private var kindFilter = ""
     @State private var totals = FlowTotals()
     @State private var error: String?
-    @State private var showAdd = false
-    @State private var showFX = false
     @State private var showReconcile = false
     @State private var correction: FlowOperation?
     @State private var audit: FlowOperation?
     @State private var reversing: FlowOperation?
+    @State private var editingTemplate: RecurringFlow?
     @State private var zone = TimeZone.current.identifier
 
     private var service: CashflowService? { session.connection.map { CashflowService(db: $0) } }
@@ -48,7 +47,12 @@ struct CashflowView: View {
             filters
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 8) {
-                    if filtered.isEmpty { Text(t("В этом месяце нет операций", "No operations this month")).foregroundStyle(.secondary).padding() }
+                    if filtered.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(rows.isEmpty ? t("В этом месяце нет операций", "No operations this month") : t("Нет операций по выбранным фильтрам", "No operations match these filters"))
+                            if hasFilters { Button(t("Сбросить фильтры", "Reset filters"), action: resetFilters) }
+                        }.foregroundStyle(.secondary).padding()
+                    }
                     ForEach(filtered) { row in operationRow(row) }
                     Divider().padding(.vertical, 12)
                     HStack {
@@ -65,6 +69,7 @@ struct CashflowView: View {
                             }
                             Spacer()
                             Text(money(item.amount) + " " + item.currency.rawValue)
+                            Button(t("Редактировать", "Edit")) { editingTemplate = item }
                             Button(item.active ? t("Приостановить", "Pause") : t("Возобновить", "Resume")) {
                                 perform { try service?.setTemplateActive(item.id, active: !item.active) }
                             }
@@ -92,13 +97,15 @@ struct CashflowView: View {
             else { reload() }
         }
         .onChange(of: session.ledgerRevision) { _, _ in reload() }
+        .onChange(of: session.cashflowFocus) { _, focus in
+            if let focus { month = focus.month; resetFilters(); reload() }
+        }
         .onChange(of: session.baseCurrency) { _, _ in calculate() }
         .onChange(of: accountFilter) { _, _ in calculate() }
         .onChange(of: kindFilter) { _, _ in calculate() }
         .onChange(of: categoryFilter) { _, _ in calculate() }
-        .sheet(isPresented: $showAdd, onDismiss: reload) { CashflowEntryView(session: session) }
         .sheet(item: $correction, onDismiss: reload) { CashflowEntryView(session: session, correcting: $0) }
-        .sheet(isPresented: $showFX, onDismiss: reload) { CashflowFXView(session: session) }
+        .sheet(item: $editingTemplate, onDismiss: reload) { CashflowEntryView(session: session, editingTemplate: $0) }
         .sheet(isPresented: $showReconcile, onDismiss: reload) { CashflowReconcileView(session: session, month: month) }
         .sheet(item: $audit) { op in
             VStack(alignment: .leading, spacing: 12) {
@@ -125,10 +132,8 @@ struct CashflowView: View {
             Button { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(FlowDate.url(month: month).absoluteString, forType: .string) } label: { Image(systemName: "link") }
                 .help(t("Скопировать ссылку на месяц", "Copy month link"))
             Spacer()
-            Button("FX") { showFX = true }
             Button(t("Сверить месяц", "Reconcile month")) { showReconcile = true }
                 .disabled(month >= String((service?.today ?? FlowDate.key(Date())).prefix(7)))
-            Button(t("+ Операция", "+ Operation")) { showAdd = true }.buttonStyle(.borderedProminent)
         }
     }
     private var accountStrip: some View {
@@ -202,9 +207,12 @@ struct CashflowView: View {
                 Text(t("Все", "All")).tag("")
                 ForEach(categories) { Text($0.title(preferences.language)).tag($0.id) }
             }.frame(maxWidth: 260)
+            if hasFilters { Button(t("Сбросить", "Reset"), action: resetFilters) }
             Spacer()
         }
     }
+    private var hasFilters: Bool { !accountFilter.isEmpty || !categoryFilter.isEmpty || !kindFilter.isEmpty }
+    private func resetFilters() { accountFilter = ""; categoryFilter = ""; kindFilter = "" }
     private func operationRow(_ row: FlowOperation) -> some View {
         let reversed = rows.contains { $0.reversalOf == row.id }
         return HStack(spacing: 12) {

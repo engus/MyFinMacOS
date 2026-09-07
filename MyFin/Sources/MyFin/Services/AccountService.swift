@@ -138,8 +138,6 @@ final class AccountService {
         func text(_ key: String) -> String? { if case .text(let value)? = row[key] { return value }; return nil }
         var value = AccountAppearance()
         value.themePreset = text("theme_preset").flatMap(AccountThemePreset.init(rawValue:)) ?? .obsidianMatte
-        value.accentTint = text("accent_tint").flatMap(AccountAccentTint.init(rawValue:)) ?? .blue
-        value.badgeIcon = text("badge_icon").flatMap(AccountBadgeIcon.init(rawValue:)) ?? .card
         value.tags = text("tags_json").flatMap { $0.data(using: .utf8) }.flatMap { try? JSONDecoder().decode([String].self, from: $0) } ?? []
         value.paymentNetwork = text("payment_network").map { PaymentNetwork(rawValue: $0) ?? .mastercard }
         return value

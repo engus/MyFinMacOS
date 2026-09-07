@@ -17,8 +17,12 @@ final class AppSession: ObservableObject {
     @Published private(set) var showOriginalCurrencies: Bool = false
     @Published private(set) var ledgerRevision = 0
     @Published private(set) var cashflowError: String?
+    @Published private(set) var cashflowFocus: CashflowFocus?
 
-    func ledgerChanged() { ledgerRevision += 1 }
+    func ledgerChanged(focusingOn date: String? = nil) {
+        if let date, FlowDate.parse(date) != nil { cashflowFocus = CashflowFocus(month: String(date.prefix(7))) }
+        ledgerRevision += 1
+    }
     func materializeCashflow() {
         guard let connection else { return }
         do {

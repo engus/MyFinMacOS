@@ -3,6 +3,7 @@ import SwiftUI
 struct CashflowEntryView: View {
     let session: AppSession
     var correcting: FlowOperation? = nil
+    var editingTemplate: RecurringFlow? = nil
     @EnvironmentObject private var preferences: AppPreferences
     @Environment(\.dismiss) private var dismiss
     @State private var accounts: [Account] = []
@@ -19,15 +20,22 @@ struct CashflowEntryView: View {
     @State private var interval = 1
     @State private var hasEnd = false
     @State private var end = Date()
-    @State private var newCategory = ""
     @State private var error: String?
     private var service: CashflowService? { session.connection.map { CashflowService(db: $0) } }
     private func t(_ ru: String, _ en: String) -> String { preferences.flowText(ru, en) }
+    private var title: String {
+        if editingTemplate != nil { return t("Редактировать шаблон", "Edit template") }
+        return correcting == nil ? t("Доход / Расход", "Income / Expense") : t("Исправить операцию", "Correct operation")
+    }
+    private var entryTimezone: TimeZone {
+        editingTemplate.flatMap { TimeZone(identifier: $0.timezone) } ?? service?.timezone ?? .current
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(correcting == nil ? t("Доход / Расход", "Income / Expense") : t("Исправить операцию", "Correct operation")).font(.title2.bold())
+            Text(title).font(.title2.bold())
             if correcting != nil { Text(t("Исходная операция будет сторнирована и заменена новой.", "The original will be reversed and replaced.")).font(.callout).foregroundStyle(.secondary) }
+            if editingTemplate != nil { Text(t("Изменения применятся к будущим датам, начиная с завтра. Проведённые операции сохранятся.", "Changes apply to future dates, starting tomorrow. Posted operations are preserved.")).font(.callout).foregroundStyle(.secondary) }
             Form {
                 Picker(t("Тип", "Type"), selection: Binding(get: { kind }, set: { value in
                     kind = value; categoryID = value == .income ? "other-income" : "other-expense"
@@ -46,45 +54,47 @@ struct CashflowEntryView: View {
                     TextField(t("Сумма", "Amount"), text: $amount)
                     Picker(t("Валюта", "Currency"), selection: $currency) { ForEach(Currency.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.frame(width: 160)
                 }
-                DatePicker(t("Дата", "Date"), selection: $date, displayedComponents: .date)
+                DatePicker(recurring ? t("Начало расписания", "Schedule start") : t("Дата", "Date"), selection: $date, displayedComponents: .date)
                 Picker(t("Категория", "Category"), selection: $categoryID) {
                     ForEach(categories.filter { $0.kind == kind }) { Text($0.title(preferences.language)).tag($0.id) }
                 }
-                HStack {
-                    TextField(t("Новая категория", "New category"), text: $newCategory)
-                    Button(t("Добавить", "Add")) {
-                        do { try service?.addCategory(name: newCategory, kind: kind); categories = try service?.categories() ?? []; categoryID = categories.last?.id ?? categoryID; newCategory = "" }
-                        catch { self.error = error.localizedDescription }
-                    }.disabled(newCategory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
                 TextField(t("Описание", "Description"), text: $note, axis: .vertical).lineLimit(2...4)
                 if correcting == nil {
-                    Toggle(t("Регулярная операция", "Recurring operation"), isOn: $recurring)
+                    if editingTemplate == nil { Toggle(t("Регулярная операция", "Recurring operation"), isOn: $recurring) }
                     if recurring {
                         Picker(t("Период", "Period"), selection: $unit) { ForEach(RepeatUnit.allCases, id: \.self) { Text(repeatTitle($0, preferences)).tag($0) } }
                         Stepper(t("Каждые: ", "Every: ") + String(interval), value: $interval, in: 1...366)
                         Toggle(t("Дата окончания", "End date"), isOn: $hasEnd)
                         if hasEnd { DatePicker(t("До", "Until"), selection: $end, displayedComponents: .date) }
-                        Text(t("Часовой пояс: ", "Timezone: ") + (service?.timezone.identifier ?? TimeZone.current.identifier)).font(.caption)
-                        Text(t("Наступившие даты будут проведены, будущие появятся в прогнозе.", "Due dates will be posted; future dates appear in the projection.")).font(.caption).foregroundStyle(.secondary)
                     }
                 }
+            }
+            if recurring && editingTemplate == nil {
+                Text(t("Наступившие даты будут проведены, будущие появятся в прогнозе.", "Due dates will be posted; future dates appear in the projection."))
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             if accounts.isEmpty { Text(t("Сначала создайте карту, наличный или банковский счёт.", "Create a card, cash or bank account first.")).foregroundStyle(.orange) }
             if let error { Text(error).foregroundStyle(.red) }
             HStack {
                 Button(t("Отмена", "Cancel")) { dismiss() }.keyboardShortcut(.cancelAction)
                 Spacer()
-                Button(recurring ? t("Создать расписание", "Create schedule") : t("Провести", "Post"), action: save)
+                Button(editingTemplate != nil ? t("Сохранить изменения", "Save changes") : recurring ? t("Создать расписание", "Create schedule") : t("Провести", "Post"), action: save)
                     .buttonStyle(.borderedProminent).disabled(accountID.isEmpty).keyboardShortcut(.defaultAction)
             }
         }.padding(24).frame(width: 580).background(DesignTokens.Colors.canvas)
+        .environment(\.timeZone, entryTimezone)
         .onAppear {
             accounts = service?.operationalAccounts() ?? []
             categories = (try? service?.categories()) ?? []
             if let op = correcting {
                 accountID = op.accountID; kind = op.kind; categoryID = op.categoryID; amount = "\(op.amount)"
                 currency = op.currency; date = FlowDate.parse(op.date, timezone: service?.timezone ?? .current) ?? Date(); note = op.note
+            } else if let template = editingTemplate {
+                accountID = template.accountID; kind = template.kind; categoryID = template.categoryID
+                amount = "\(template.amount)"; currency = template.currency; note = template.note
+                date = FlowDate.parse(template.start, timezone: entryTimezone) ?? Date()
+                recurring = true; unit = template.unit; interval = template.interval; hasEnd = template.end != nil
+                end = template.end.flatMap { FlowDate.parse($0, timezone: entryTimezone) } ?? Date()
             } else if let first = accounts.first { accountID = first.id; currency = first.currency }
         }
     }
@@ -92,50 +102,20 @@ struct CashflowEntryView: View {
         guard let service else { return }
         do {
             guard let value = AccountCreationValidation.balance(amount) else { throw FlowError.invalidAmount }
-            let key = FlowDate.key(date, timezone: service.timezone)
+            let key = FlowDate.key(date, timezone: entryTimezone)
             let draft = FlowDraft(accountID: accountID, kind: kind, categoryID: categoryID, amount: value, currency: currency, date: key, note: note)
             if let correcting { _ = try service.correct(correcting.id, with: draft) }
             else if recurring {
-                try service.saveTemplate(RecurringFlow(accountID: accountID, kind: kind, categoryID: categoryID, amount: value,
-                    currency: currency, note: note, start: key, end: hasEnd ? FlowDate.key(end, timezone: service.timezone) : nil,
-                    unit: unit, interval: interval, timezone: service.timezone.identifier))
+                var template = RecurringFlow(accountID: accountID, kind: kind, categoryID: categoryID, amount: value,
+                    currency: currency, note: note, start: key, end: hasEnd ? FlowDate.key(end, timezone: entryTimezone) : nil,
+                    unit: unit, interval: interval, timezone: entryTimezone.identifier)
+                if let editingTemplate { template.id = editingTemplate.id; template.active = editingTemplate.active }
+                try service.saveTemplate(template)
             } else { _ = try service.post(draft) }
-            session.ledgerChanged(); session.materializeCashflow(); dismiss()
+            session.materializeCashflow()
+            session.ledgerChanged(focusingOn: editingTemplate != nil ? service.today : key)
+            dismiss()
         } catch { self.error = error.localizedDescription }
-    }
-}
-
-struct CashflowFXView: View {
-    let session: AppSession
-    @EnvironmentObject private var preferences: AppPreferences
-    @Environment(\.dismiss) private var dismiss
-    @State private var rate = ""
-    @State private var source = "Manual"
-    @State private var date = Date()
-    @State private var error: String?
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text(preferences.flowText("Исторический курс", "Historical FX quote")).font(.title2)
-            Text(preferences.flowText("Введите курс на указанную дату. Ранее сохранённые валютные снимки операций сохраняются.", "Enter a dated quote. Existing operation FX snapshots are preserved."))
-            Form {
-                TextField("1 USD = … KZT", text: $rate)
-                DatePicker(preferences.flowText("Дата курса", "Quote date"), selection: $date, displayedComponents: .date)
-                TextField(preferences.flowText("Источник", "Source"), text: $source)
-            }
-            if let error { Text(error).foregroundStyle(.red) }
-            HStack {
-                Button(preferences.flowText("Отмена", "Cancel")) { dismiss() }
-                Spacer()
-                Button(preferences.flowText("Сохранить", "Save")) {
-                    do {
-                        guard let db = session.connection, let value = AccountCreationValidation.balance(rate) else { throw FlowError.invalidAmount }
-                        let service = CashflowService(db: db)
-                        try service.saveQuote(from: .usd, to: .kzt, rate: value, date: FlowDate.key(date, timezone: service.timezone), source: source)
-                        session.ledgerChanged(); session.materializeCashflow(); dismiss()
-                    } catch { self.error = error.localizedDescription }
-                }.buttonStyle(.borderedProminent)
-            }
-        }.padding(24).frame(width: 480)
     }
 }
 
@@ -166,7 +146,7 @@ struct CashflowReconcileView: View {
                                     do {
                                         guard let amount = AccountCreationValidation.balance(reports[account.id] ?? "") else { throw FlowError.invalidAmount }
                                         _ = try service?.reconcile(accountID: account.id, month: month, reported: amount)
-                                        session.ledgerChanged(); reload()
+                                        session.ledgerChanged(focusingOn: try FlowDate.end(month)); reload()
                                     } catch { self.error = error.localizedDescription }
                                 }
                                 if completed.contains(account.id) { Image(systemName: "checkmark.circle.fill").foregroundStyle(.green) }

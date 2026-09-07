@@ -118,7 +118,7 @@ final class AccountsListModelTests: XCTestCase {
     func test_groupedByInstitution_convertsToBaseCurrency() {
         let institutions = InstitutionService(connection: session.connection!)
         let accounts = AccountService(connection: session.connection!, institutionService: institutions)
-        _ = accounts.createAccount(country: .kz, type: .bankAccount, institutionSelection: .existing(id: "kz.halyk-bank"), currency: .kzt, openingBalance: Decimal(string: "460.5")!, name: "A", balanceDate: nil)
+        _ = accounts.createAccount(country: .kz, type: .bankAccount, institutionSelection: .existing(id: "kz.halyk-bank"), currency: .kzt, openingBalance: Decimal(string: "460")!, name: "A", balanceDate: nil)
 
         let model = AccountsListModel(session: session)
         model.reload()
@@ -181,7 +181,7 @@ final class AccountsListModelTests: XCTestCase {
         let institutions = InstitutionService(connection: session.connection!)
         let accounts = AccountService(connection: session.connection!, institutionService: institutions)
         _ = accounts.createAccount(country: .kz, type: .cash, institutionSelection: .none, currency: .usd, openingBalance: 1, name: "A", balanceDate: nil)
-        _ = accounts.createAccount(country: .kz, type: .cash, institutionSelection: .none, currency: .kzt, openingBalance: Decimal(string: "460.5")!, name: "B", balanceDate: nil)
+        _ = accounts.createAccount(country: .kz, type: .cash, institutionSelection: .none, currency: .kzt, openingBalance: Decimal(string: "460")!, name: "B", balanceDate: nil)
 
         let model = AccountsListModel(session: session)
         model.reload()
@@ -230,7 +230,7 @@ final class AccountsListModelTests: XCTestCase {
     func test_groupedByType_convertsToBaseCurrency() {
         let institutions = InstitutionService(connection: session.connection!)
         let accounts = AccountService(connection: session.connection!, institutionService: institutions)
-        _ = accounts.createAccount(country: .kz, type: .cash, institutionSelection: .none, currency: .kzt, openingBalance: Decimal(string: "460.5")!, name: "A", balanceDate: nil)
+        _ = accounts.createAccount(country: .kz, type: .cash, institutionSelection: .none, currency: .kzt, openingBalance: Decimal(string: "460")!, name: "A", balanceDate: nil)
 
         let model = AccountsListModel(session: session)
         model.reload()

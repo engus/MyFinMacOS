@@ -31,7 +31,7 @@ final class AccountAppearanceTests: XCTestCase {
         db.close()
         let migrated = try DatabaseConnection.open(at: url, password: "test")
         let migratedService = AccountService(connection: migrated, institutionService: InstitutionService(connection: migrated))
-        XCTAssertEqual(try migrated.userVersion, 8)
+        XCTAssertEqual(try migrated.userVersion, 9)
         XCTAssertEqual(migratedService.listAccounts(includeArchived: true).first?.appearance.themePreset, .obsidianMatte)
         XCTAssertNil(migratedService.listAccounts(includeArchived: true).first?.appearance.paymentNetwork)
         let new = try migratedService.createAccount(country: .kz, type: .cash, institutionSelection: .none,

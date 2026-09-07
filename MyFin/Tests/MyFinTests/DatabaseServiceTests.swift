@@ -86,7 +86,7 @@ final class DatabaseServiceTests: XCTestCase {
 
     func test_open_freshDatabase_endsUpAtLatestUserVersion() throws {
         let connection = try makeConnection()
-        XCTAssertEqual(try connection.userVersion, 8)
+        XCTAssertEqual(try connection.userVersion, 9)
     }
 
     func test_open_freshDatabase_createsExpectedTables() throws {
@@ -107,11 +107,11 @@ final class DatabaseServiceTests: XCTestCase {
     func test_reopeningAlreadyMigratedDatabase_isANoOp() throws {
         let url = tempDatabaseURL()
         let first = try DatabaseConnection.open(at: url, password: "pw")
-        XCTAssertEqual(try first.userVersion, 8)
+        XCTAssertEqual(try first.userVersion, 9)
         first.close()
 
         let second = try DatabaseConnection.open(at: url, password: "pw")
-        XCTAssertEqual(try second.userVersion, 8)
+        XCTAssertEqual(try second.userVersion, 9)
     }
 
     func test_open_freshDatabase_seedsSystemInstitutionCatalog() throws {
@@ -150,7 +150,7 @@ final class DatabaseServiceTests: XCTestCase {
         let row = try XCTUnwrap(migrated.query("SELECT * FROM balance_history;").first)
         XCTAssertEqual(row["balance"], .text("100"))
         XCTAssertEqual(row["currency"], .null)
-        XCTAssertEqual(try migrated.userVersion, 8)
+        XCTAssertEqual(try migrated.userVersion, 9)
     }
 
     func test_versionSixAppearanceMigrationRemovesUnusedCardMetadataAndKeepsCoreAppearance() throws {
@@ -202,7 +202,7 @@ final class DatabaseServiceTests: XCTestCase {
         XCTAssertEqual(row["theme_preset"], .text("emeraldGlass"))
         XCTAssertEqual(row["tags_json"], .text("[\"Salary\"]"))
         XCTAssertEqual(row["payment_network"], .text("visa"))
-        XCTAssertEqual(try migrated.userVersion, 8)
+        XCTAssertEqual(try migrated.userVersion, 9)
     }
 
 }

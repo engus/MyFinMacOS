@@ -4,6 +4,11 @@ enum FlowKind: String, CaseIterable, Codable { case income, expense }
 enum FlowSource: String, Codable { case ordinary, recurring, reconciliation, opening, adjustment, transfer, assetPurchase }
 enum RepeatUnit: String, CaseIterable, Codable { case week, month, quarter, year, days }
 
+struct CashflowFocus: Equatable {
+    let id = UUID()
+    let month: String
+}
+
 struct FlowCategory: Identifiable, Codable {
     let id: String
     let kind: FlowKind
@@ -68,6 +73,7 @@ struct RecurringFlow: Identifiable, Codable {
     var interval: Int = 1
     var timezone: String
     var active = true
+    var effectiveFrom: String? = nil
 
     // Always anchor to the original day; Jan 31 -> Feb 28 -> Mar 31.
     func dates(through endDate: String) throws -> [String] {
@@ -82,7 +88,7 @@ struct RecurringFlow: Identifiable, Codable {
             guard let date = calendar.date(byAdding: component, value: index * interval * multiplier, to: anchor) else { break }
             let key = FlowDate.key(date, timezone: zone)
             if key > endDate || (end != nil && key > end!) { return result }
-            result.append(key)
+            if effectiveFrom == nil || key >= effectiveFrom! { result.append(key) }
         }
         throw FlowError.invalidSchedule
     }
@@ -122,7 +128,7 @@ enum FlowError: LocalizedError {
         case .invalidSchedule: return "Некорректное расписание / Invalid recurring schedule."
         case .accountUnavailable: return "Счёт недоступен для этой операции / Account unavailable."
         case .categoryMismatch: return "Категория не соответствует типу операции / Category mismatch."
-        case .missingFX: return "Нет курса на дату операции. Добавьте курс в Cashflow → FX. / Missing dated FX quote."
+        case .missingFX: return "Не удалось определить курс валюты / Currency conversion unavailable."
         case .alreadyReversed: return "Операция уже сторнирована / Operation already reversed."
         case .immutable: return "Используйте сторно для исправления проведённой операции / Use a reversal."
         case .futurePosting: return "Будущие операции создаются через расписание / Use a recurring template for future dates."

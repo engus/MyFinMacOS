@@ -132,6 +132,9 @@ struct MainShellView: View {
         .onReceive(cashflowTimer) { _ in session.materializeCashflow() }
         .onChange(of: scenePhase) { _, phase in if phase == .active { session.materializeCashflow() } }
         .onChange(of: session.ledgerRevision) { _, _ in accountsModel.reload() }
+        .onChange(of: session.cashflowFocus) { _, focus in
+            if let focus { cashflowMonth = focus.month; selection = .cashflow }
+        }
         .onOpenURL { url in
             if let month = FlowDate.month(from: url) { cashflowMonth = month; selection = .cashflow }
         }

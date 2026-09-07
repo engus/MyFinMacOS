@@ -21,7 +21,7 @@ final class DashboardServiceTests: XCTestCase {
     func test_totalBalance_convertsMixedCurrencies() throws {
         let (dashboard, accounts, _) = try makeServices()
         _ = accounts.createAccount(country: .kz, type: .cash, institutionSelection: .none, currency: .usd, openingBalance: 1, name: "A", balanceDate: nil)
-        _ = accounts.createAccount(country: .kz, type: .cash, institutionSelection: .none, currency: .kzt, openingBalance: Decimal(string: "460.5")!, name: "B", balanceDate: nil)
+        _ = accounts.createAccount(country: .kz, type: .cash, institutionSelection: .none, currency: .kzt, openingBalance: Decimal(string: "460")!, name: "B", balanceDate: nil)
         XCTAssertEqual(dashboard.totalBalance(displayCurrency: .usd), 2)
     }
 

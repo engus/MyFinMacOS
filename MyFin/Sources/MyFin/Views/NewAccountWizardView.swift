@@ -304,26 +304,8 @@ struct NewAccountWizardView: View {
                     }.buttonStyle(.plain).accessibilityAddTraits(appearance.themePreset == theme ? .isSelected : [])
                 }
             }
-            HStack {
-                Text(preferences.string(.accentTint)).font(.caption)
-                Spacer()
-                ForEach(AccountAccentTint.allCases, id: \.self) { tint in
-                    Button { appearance.accentTint = tint } label: {
-                        Circle().fill(tint.color).frame(width: 20, height: 20).padding(3)
-                            .overlay { Circle().stroke(appearance.accentTint == tint ? Color.blue : .clear, lineWidth: 2) }
-                    }.buttonStyle(.plain).accessibilityLabel(preferences.string(tint.labelKey)).accessibilityAddTraits(appearance.accentTint == tint ? .isSelected : [])
-                }
-            }
             if type == .debitCard { paymentNetworkFields }
             Divider()
-            heading(.iconLabel)
-            HStack {
-                ForEach(AccountBadgeIcon.allCases, id: \.self) { badge in
-                    Button { appearance.badgeIcon = badge } label: {
-                        Image(systemName: badge.symbol).font(.title3).frame(width: 42, height: 30)
-                    }.tint(appearance.badgeIcon == badge ? .blue : .gray).accessibilityLabel(preferences.string(badge.labelKey))
-                }
-            }
             heading(.accountTags)
             HStack {
                 TextField(preferences.string(.addTag), text: $tag).textFieldStyle(.roundedBorder).onSubmit(addTag)

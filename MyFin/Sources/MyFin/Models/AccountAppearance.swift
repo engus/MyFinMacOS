@@ -7,8 +7,24 @@ enum PaymentNetwork: String, CaseIterable { case mastercard, visa, kaspiPay, uni
 
 struct AccountAppearance: Equatable {
     var themePreset: AccountThemePreset = .obsidianMatte
-    var accentTint: AccountAccentTint = .blue
-    var badgeIcon: AccountBadgeIcon = .card
+    var accentTint: AccountAccentTint {
+        switch themePreset {
+        case .obsidianMatte, .titaniumFrost: return .gray
+        case .sapphireWave: return .blue
+        case .emeraldGlass: return .green
+        case .roseGoldMetallic: return .orange
+        case .cyberHologram: return .purple
+        }
+    }
+    var badgeIcon: AccountBadgeIcon {
+        switch themePreset {
+        case .obsidianMatte, .roseGoldMetallic: return .card
+        case .sapphireWave: return .bank
+        case .emeraldGlass: return .wallet
+        case .titaniumFrost: return .lock
+        case .cyberHologram: return .chart
+        }
+    }
     var tags: [String] = []
     var paymentNetwork: PaymentNetwork? = .mastercard
 

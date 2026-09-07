@@ -27,7 +27,7 @@ final class AccountListQueryTests: XCTestCase {
     }
 
     func test_balanceSortComparesConvertedValuesAndCanReverse() {
-        let accounts = [account("ten-usd", balance: 10), account("one-usd", currency: .kzt, balance: 460.5)]
+        let accounts = [account("ten-usd", balance: 10), account("one-usd", currency: .kzt, balance: 460)]
         var query = AccountListQuery()
         XCTAssertEqual(query.matching(accounts, institutionNames: [:], baseCurrency: .usd).map(\.id), ["ten-usd", "one-usd"])
         query.sort = .balanceAscending
@@ -36,7 +36,7 @@ final class AccountListQueryTests: XCTestCase {
 
     func test_sectionsUseOnlyVisibleAccountsAndConvertSubtotals() {
         let accounts = [
-            account("usd", balance: 1), account("kzt", currency: .kzt, balance: 460.5),
+            account("usd", balance: 1), account("kzt", currency: .kzt, balance: 460),
             account("us", country: .us, balance: 3), account("hidden", balance: 900, archived: true)
         ]
         let sections = AccountListQuery().sections(accounts, institutionNames: [:], grouping: .country, baseCurrency: .usd)

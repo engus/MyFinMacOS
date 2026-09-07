@@ -45,10 +45,7 @@ enum CashflowSchema {
                 try db.execute("CREATE TRIGGER IF NOT EXISTS immutable_\(table)_\(action) BEFORE \(action) ON \(table) BEGIN SELECT RAISE(ABORT, 'financial records are immutable'); END;")
             }
         }
-        for category in categories {
-            try db.execute("INSERT OR IGNORE INTO flow_categories VALUES (?, ?, ?);", params: [.text(category.id), .text(category.kind.rawValue), .text(try json(category))])
-            try db.execute("INSERT OR IGNORE INTO ledger_accounts VALUES (?, NULL, ?);", params: [.text("category:" + category.id), .text(category.id)])
-        }
+        try seedCategories(db)
         for id in ["equity", "fx"] { try db.execute("INSERT OR IGNORE INTO ledger_accounts VALUES (?, NULL, NULL);", params: [.text(id)]) }
         // Import the last known legacy balance as equity, never as Cashflow income.
         for row in try db.query("SELECT * FROM accounts;") {
@@ -65,16 +62,34 @@ enum CashflowSchema {
 
     static func json<T: Encodable>(_ value: T) throws -> String { String(decoding: try JSONEncoder().encode(value), as: UTF8.self) }
 
+    static func seedCategories(_ db: DatabaseConnection) throws {
+        for category in categories {
+            try db.execute("INSERT OR IGNORE INTO flow_categories VALUES (?, ?, ?);", params: [.text(category.id), .text(category.kind.rawValue), .text(try json(category))])
+            try db.execute("INSERT OR IGNORE INTO ledger_accounts VALUES (?, NULL, ?);", params: [.text("category:" + category.id), .text(category.id)])
+        }
+    }
+
     static let categories = [
         FlowCategory(id: "other-income", kind: .income, name: "Прочие доходы", englishName: "Other Income"),
         FlowCategory(id: "salary", kind: .income, name: "Зарплата", englishName: "Salary"),
         FlowCategory(id: "rent", kind: .income, name: "Аренда", englishName: "Rent"),
+        FlowCategory(id: "freelance", kind: .income, name: "Фриланс", englishName: "Freelance"),
+        FlowCategory(id: "business", kind: .income, name: "Бизнес", englishName: "Business"),
+        FlowCategory(id: "bonuses", kind: .income, name: "Премии", englishName: "Bonuses"),
+        FlowCategory(id: "dividends", kind: .income, name: "Дивиденды", englishName: "Dividends"),
+        FlowCategory(id: "interest", kind: .income, name: "Проценты по вкладам", englishName: "Interest"),
+        FlowCategory(id: "gifts", kind: .income, name: "Подарки", englishName: "Gifts"),
+        FlowCategory(id: "refunds", kind: .income, name: "Возвраты и кешбэк", englishName: "Refunds & Cashback"),
         FlowCategory(id: "other-expense", kind: .expense, name: "Прочие расходы", englishName: "Other Expense"),
         FlowCategory(id: "utilities", kind: .expense, name: "Коммунальные услуги", englishName: "Utilities"),
         FlowCategory(id: "groceries", kind: .expense, name: "Продукты", englishName: "Groceries"),
         FlowCategory(id: "transport", kind: .expense, name: "Транспорт", englishName: "Transport"),
         FlowCategory(id: "subscriptions", kind: .expense, name: "Подписки", englishName: "Subscriptions"),
-        FlowCategory(id: "travel", kind: .expense, name: "Путешествия", englishName: "Travel")
+        FlowCategory(id: "travel", kind: .expense, name: "Путешествия", englishName: "Travel"),
+        FlowCategory(id: "housing", kind: .expense, name: "Жильё и аренда", englishName: "Housing & Rent"),
+        FlowCategory(id: "dining", kind: .expense, name: "Кафе и рестораны", englishName: "Dining"),
+        FlowCategory(id: "health", kind: .expense, name: "Здоровье", englishName: "Health"),
+        FlowCategory(id: "shopping", kind: .expense, name: "Покупки", englishName: "Shopping")
     ]
 }
 

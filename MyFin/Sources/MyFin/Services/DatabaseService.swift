@@ -276,7 +276,8 @@ extension DatabaseConnection {
             "DROP TABLE account_appearances;",
             "ALTER TABLE account_appearances_v7 RENAME TO account_appearances;"
         ]),
-        MigrationStep(version: 8, statements: [])
+        MigrationStep(version: 8, statements: []),
+        MigrationStep(version: 9, statements: [])
     ]
 
     func runMigrations() throws {
@@ -290,6 +291,7 @@ extension DatabaseConnection {
                     try seedSystemInstitutions()
                 }
                 if step.version == 8 { try CashflowSchema.install(self) }
+                if step.version == 9 { try CashflowSchema.seedCategories(self) }
                 try setUserVersion(step.version)
             }
         }

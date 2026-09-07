@@ -51,27 +51,24 @@ final class CashflowTests: XCTestCase {
         XCTAssertFalse(try service.operations().contains { $0.reversalOf == op.id })
         XCTAssertEqual(try service.balance(accountID: a.id, currency: .usd), 90)
     }
-    func test_crossCurrencyPostingsAndFXSnapshotSurviveQuoteChanges() throws {
+    func test_crossCurrencyPostingsUseFixedRateWithoutManualQuotes() throws {
         let a = try account(.kzt, amount: 10000)
         var d = draft(a); d.currency = .usd
-        XCTAssertThrowsError(try service.post(d))
-        try service.saveQuote(from: .usd, to: .kzt, rate: 500, date: d.date)
         let op = try service.post(d)
-        XCTAssertEqual(op.accountAmount, 5000)
+        XCTAssertEqual(op.accountAmount, 4600)
         XCTAssertEqual(try db.query("SELECT * FROM ledger_entries WHERE operation_id = ?;", params: [.text(op.id)]).count, 4)
-        try service.saveQuote(from: .usd, to: .kzt, rate: 600, date: d.date)
-        XCTAssertEqual(try service.totals(service.monthly("2026-09"), base: .kzt).expense, 5000)
+        XCTAssertEqual(try service.totals(service.monthly("2026-09"), base: .kzt).expense, 4600)
         _ = try service.reverse(op.id)
         XCTAssertEqual(try service.balance(accountID: a.id, currency: .kzt), 10000)
     }
-    func test_missingAndStaleFXAreReportedAndZeroIncomeHasNoSavingsRate() throws {
-        let a = try account(.kzt)
-        _ = try service.post(draft(a))
+    func test_fixedFXConvertsKztWithoutMissingOrStaleWarnings() throws {
+        let a = try account(.kzt, amount: 1000)
+        _ = try service.post(draft(a, 460))
         let rows = try service.monthly("2026-09")
-        XCTAssertEqual(try service.totals(rows, base: .usd).missingFX, 1)
+        XCTAssertEqual(try service.totals(rows, base: .usd).missingFX, 0)
+        XCTAssertEqual(try service.totals(rows, base: .usd).expense, 1)
         XCTAssertNil(try service.totals(rows, base: .kzt).savingsRate)
-        try service.saveQuote(from: .usd, to: .kzt, rate: 500, date: "2026-09-01")
-        XCTAssertEqual(try service.totals(rows, base: .usd).staleFX, 1)
+        XCTAssertEqual(try service.totals(rows, base: .usd).staleFX, 0)
     }
     func test_recurringMonthEndAndMaterializationAreIdempotent() throws {
         let a = try account(amount: 1000)
@@ -129,13 +126,12 @@ final class CashflowTests: XCTestCase {
         XCTAssertNil(FlowDate.parse("2026-02-30"))
     }
 
-    func test_lateFXSnapshotIsFrozenAndSharedWithReversal() throws {
-        let a = try account(.kzt)
-        let op = try service.post(draft(a))
-        try service.saveQuote(from: .usd, to: .kzt, rate: 500, date: op.date)
-        XCTAssertEqual(try service.totals([op], base: .usd).expense, Decimal(string: "0.02"))
-        try service.saveQuote(from: .usd, to: .kzt, rate: 1000, date: op.date)
-        XCTAssertEqual(try service.totals([op], base: .usd).expense, Decimal(string: "0.02"))
+    func test_fixedFXIgnoresLegacyManualQuotesAndReversesExactly() throws {
+        let a = try account(.kzt, amount: 1000)
+        let legacy = FXSnapshot(from: .kzt, to: .usd, rate: Decimal(string: "0.002")!, date: "2026-09-01", source: "Manual")
+        try db.execute("INSERT INTO flow_fx VALUES ('KZT', 'USD', '2026-09-01', ?);", params: [.text(try CashflowSchema.json(legacy))])
+        let op = try service.post(draft(a, 460))
+        XCTAssertEqual(try service.totals([op], base: .usd).expense, 1)
         _ = try service.reverse(op.id)
         XCTAssertEqual(try service.totals(service.monthly("2026-09"), base: .usd).expense, 0)
     }
@@ -169,17 +165,94 @@ final class CashflowTests: XCTestCase {
         XCTAssertEqual(try engine.materializeDue(), 1)
         XCTAssertEqual(try engine.materializeDue(), 0)
     }
-    func test_missingRecurringFXDoesNotBlockOtherTemplates() throws {
+    func test_recurringCrossCurrencyNeedsNoQuoteSetup() throws {
         let a = try account(.kzt); let b = try account()
-        try service.saveQuote(from: .usd, to: .kzt, rate: 500, date: "2026-09-01")
         try service.saveTemplate(RecurringFlow(accountID: a.id, kind: .income, categoryID: "salary", amount: 10,
             currency: .usd, note: "Missing FX", start: "2026-09-01", unit: .month, timezone: "Asia/Almaty"))
         try db.execute("DELETE FROM flow_fx;")
         try service.saveTemplate(RecurringFlow(accountID: b.id, kind: .income, categoryID: "salary", amount: 20,
             currency: .usd, note: "Available", start: "2026-09-01", unit: .month, timezone: "Asia/Almaty"))
-        XCTAssertThrowsError(try service.materializeDue())
+        XCTAssertEqual(try service.materializeDue(), 2)
         XCTAssertEqual(try service.balance(accountID: b.id, currency: .usd), 120)
-        XCTAssertEqual(try service.balance(accountID: a.id, currency: .kzt), 100)
+        XCTAssertEqual(try service.balance(accountID: a.id, currency: .kzt), 4700)
+    }
+
+    func test_templateEditingPreservesPostedHistoryAndDoesNotBackfillChangedSchedule() throws {
+        let a = try account(amount: 1000)
+        var template = RecurringFlow(accountID: a.id, kind: .expense, categoryID: "subscriptions", amount: 10,
+            currency: .usd, note: "Original", start: "2026-09-01", unit: .month, timezone: "Asia/Almaty")
+        try service.saveTemplate(template)
+        XCTAssertEqual(try service.materializeDue(), 1)
+        template.amount = 25; template.note = "Updated"; template.start = "2026-09-02"
+        try service.saveTemplate(template)
+        XCTAssertEqual(try service.materializeDue(), 0)
+        let posted = try service.monthly("2026-09").filter { !$0.expected }
+        XCTAssertEqual(posted.count, 1)
+        XCTAssertEqual(posted.first?.amount, 10)
+        XCTAssertEqual(posted.first?.note, "Original")
+        let future = try service.monthly("2026-10")
+        XCTAssertEqual(future.count, 1)
+        XCTAssertEqual(future.first?.amount, 25)
+        XCTAssertEqual(future.first?.date, "2026-10-02")
+        XCTAssertEqual(try service.balance(accountID: a.id, currency: .usd), 990)
+        XCTAssertEqual(try service.templates().count, 1)
+    }
+
+    func test_categoriesUpgradeExistingProfileAndRemainUsable() throws {
+        try db.execute("DELETE FROM ledger_accounts WHERE category_id NOT IN ('salary', 'other-income', 'other-expense');")
+        try db.execute("DELETE FROM flow_categories WHERE id NOT IN ('salary', 'other-income', 'other-expense');")
+        try db.setUserVersion(8)
+        db.close()
+        db = try DatabaseConnection.open(at: url, password: "test")
+        service = CashflowService(db: db, now: { self.now })
+        let categories = try service.categories()
+        XCTAssertEqual(categories.filter { $0.kind == .income }.count, 10)
+        XCTAssertEqual(categories.filter { $0.kind == .expense }.count, 10)
+        let a = try account()
+        for category in categories {
+            _ = try service.post(FlowDraft(accountID: a.id, kind: category.kind, categoryID: category.id, amount: 1, currency: .usd, date: "2026-09-10"))
+        }
+        XCTAssertEqual(try service.balance(accountID: a.id, currency: .usd), 100)
+    }
+
+    func test_positiveAndNegativeReconciliationAppearAsMonthlyIncomeAndExpense() throws {
+        let a = try account(); let b = try account()
+        let income = try service.reconcile(accountID: a.id, month: "2026-08", reported: 125)
+        let expense = try service.reconcile(accountID: b.id, month: "2026-08", reported: 85)
+        let rows = try service.monthly("2026-08")
+        XCTAssertEqual(rows.first { $0.id == income.operationID }?.kind, .income)
+        XCTAssertEqual(rows.first { $0.id == expense.operationID }?.kind, .expense)
+        XCTAssertEqual(try service.totals(rows, base: .usd).income, 25)
+        XCTAssertEqual(try service.totals(rows, base: .usd).expense, 15)
+    }
+
+    func test_accountBalanceEditorProducesVisibleIncomeAndExpense() throws {
+        let a = try account()
+        let accounts = AccountService(connection: db, institutionService: InstitutionService(connection: db), now: { self.now })
+        _ = try accounts.updateAccount(id: a.id, name: a.name, country: a.country, type: a.type, currency: a.currency,
+            institutionSelection: .none, openingBalance: 150).get()
+        _ = try accounts.updateAccount(id: a.id, name: a.name, country: a.country, type: a.type, currency: a.currency,
+            institutionSelection: .none, openingBalance: 130).get()
+        let rows = try service.monthly("2026-09")
+        XCTAssertEqual(rows.count, 2)
+        XCTAssertTrue(rows.allSatisfy { $0.source == .adjustment })
+        XCTAssertEqual(try service.totals(rows, base: .usd).income, 50)
+        XCTAssertEqual(try service.totals(rows, base: .usd).expense, 20)
+        XCTAssertEqual(try service.balance(accountID: a.id, currency: .usd), 130)
+    }
+
+    func test_editingPausedTemplatePreservesPauseAndUsesNewTermsOnResume() throws {
+        let a = try account()
+        var template = RecurringFlow(accountID: a.id, kind: .income, categoryID: "salary", amount: 10,
+            currency: .usd, note: "Old", start: "2026-09-01", unit: .month, timezone: "Asia/Almaty", active: false)
+        try service.saveTemplate(template)
+        template.amount = 20; template.start = "2026-09-20"
+        try service.saveTemplate(template)
+        XCTAssertEqual(try service.templates().first?.active, false)
+        XCTAssertTrue(try service.monthly("2026-09").isEmpty)
+        try service.setTemplateActive(template.id, active: true)
+        XCTAssertEqual(try service.materializeDue(), 0)
+        XCTAssertEqual(try service.monthly("2026-09").first?.amount, 20)
     }
     func test_demoIsOptInAndDoesNotDuplicate() throws {
         XCTAssertTrue(service.accounts().isEmpty)

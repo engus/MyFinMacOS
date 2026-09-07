@@ -121,7 +121,8 @@ struct AccountFormView: View {
         switch result {
         case .success:
             errorMessage = nil
-            session.ledgerChanged()
+            let balanceChanged = existingAccount.map { $0.currency == currency && $0.openingBalance != balance } ?? false
+            session.ledgerChanged(focusingOn: balanceChanged ? session.connection.map { CashflowService(db: $0).today } : nil)
             dismiss()
         case .failure(.negativeBalance):
             errorMessage = preferences.string(.negativeBalanceMessage)

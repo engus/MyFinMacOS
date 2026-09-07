@@ -24,6 +24,10 @@ final class CashflowRenderTests: XCTestCase {
         }
         try render(CashflowEntryView(session: session).environmentObject(preferences).environment(\.colorScheme, .light).preferredColorScheme(.light), width: 640, height: 600,
             path: directory + "/cashflow-entry.png")
+        let template = try XCTUnwrap(CashflowService(db: db).templates().first)
+        try render(CashflowEntryView(session: session, editingTemplate: template).environmentObject(preferences)
+            .environment(\.colorScheme, .light).preferredColorScheme(.light), width: 640, height: 660,
+            path: directory + "/cashflow-template-edit.png")
     }
     private func render<V: View>(_ view: V, width: CGFloat, height: CGFloat, path: String) throws {
         let host = NSHostingView(rootView: view)

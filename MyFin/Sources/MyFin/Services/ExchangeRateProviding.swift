@@ -5,7 +5,7 @@ protocol ExchangeRateProviding {
 }
 
 struct HardcodedExchangeRateProvider: ExchangeRateProviding {
-    static let usdToKzt: Decimal = Decimal(string: "460.5")!
+    static let usdToKzt: Decimal = 460
 
     func rate(from: Currency, to: Currency) -> Decimal {
         if from == to { return 1 }

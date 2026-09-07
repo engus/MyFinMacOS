@@ -53,24 +53,8 @@ final class CashflowService {
     }
 
     func quote(from: Currency, to: Currency, date: String) throws -> FXSnapshot? {
-        if from == to { return FXSnapshot(from: from, to: to, rate: 1, date: date, source: "identity") }
-        let rows = try db.query("SELECT payload FROM flow_fx WHERE from_currency = ? AND to_currency = ? AND date <= ? ORDER BY date DESC LIMIT 1;",
-            params: [.text(from.rawValue), .text(to.rawValue), .text(date)])
-        guard var quote = try rows.first?.decode(FXSnapshot.self) else { return nil }
-        quote.stale = quote.date < date
-        return quote
-    }
-    func saveQuote(from: Currency, to: Currency, rate: Decimal, date: String, source: String = "Manual") throws {
-        guard from != to, rate > 0, !rate.isNaN, FlowDate.parse(date) != nil, !source.isEmpty else { throw FlowError.invalidAmount }
-        _ = try FlowMoney.units(rate)
-        let reverse = FlowMoney.rounded(1 / rate)
-        guard reverse > 0 else { throw FlowError.invalidAmount }
-        try db.withTransaction {
-            for item in [FXSnapshot(from: from, to: to, rate: rate, date: date, source: source), FXSnapshot(from: to, to: from, rate: reverse, date: date, source: source)] {
-                try db.execute("INSERT INTO flow_fx VALUES (?, ?, ?, ?) ON CONFLICT(from_currency, to_currency, date) DO UPDATE SET payload = excluded.payload;",
-                    params: [.text(item.from.rawValue), .text(item.to.rawValue), .text(date), .text(try CashflowSchema.json(item))])
-            }
-        }
+        FXSnapshot(from: from, to: to, rate: HardcodedExchangeRateProvider().rate(from: from, to: to),
+            date: date, source: from == to ? "identity" : "Fixed: 1 USD = 460 KZT")
     }
 
     @discardableResult func post(_ draft: FlowDraft) throws -> FlowOperation {
@@ -197,7 +181,18 @@ final class CashflowService {
         _ = try template.dates(through: template.start)
         _ = try makeOperation(FlowDraft(accountID: template.accountID, kind: template.kind, categoryID: template.categoryID,
             amount: template.amount, currency: template.currency, date: template.start, note: template.note), requireFX: false)
-        try db.execute("INSERT INTO flow_templates VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET payload = excluded.payload;", params: [.text(template.id), .text(try CashflowSchema.json(template))])
+        let isEditing = try templates().contains(where: { $0.id == template.id })
+        // Due postings each own their transaction, just as on the periodic app refresh.
+        if isEditing { _ = try materializeDue() }
+        try db.withTransaction {
+            var value = template
+            if isEditing {
+                let zone = TimeZone(identifier: template.timezone)!
+                var calendar = Calendar(identifier: .gregorian); calendar.timeZone = zone
+                value.effectiveFrom = FlowDate.key(calendar.date(byAdding: .day, value: 1, to: now())!, timezone: zone)
+            }
+            try db.execute("INSERT INTO flow_templates VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET payload = excluded.payload;", params: [.text(value.id), .text(try CashflowSchema.json(value))])
+        }
     }
     func setTemplateActive(_ id: String, active: Bool) throws {
         guard var template = try templates().first(where: { $0.id == id }) else { throw FlowError.corruptData }
@@ -269,16 +264,9 @@ final class CashflowService {
     }
 
     func valuation(_ row: FlowOperation, base: Currency) throws -> FXSnapshot? {
-        if let snapshot = row.fx.first(where: { $0.from == row.currency && $0.to == base }) { return snapshot }
-        if row.currency == base { return try quote(from: base, to: base, date: row.date) }
-        if row.expected { return try quote(from: row.currency, to: base, date: row.date) }
-        let rootID = row.reversalOf ?? row.id
-        if let saved = try db.query("SELECT payload FROM flow_valuations WHERE operation_id = ? AND currency = ?;",
-            params: [.text(rootID), .text(base.rawValue)]).first { return try saved.decode(FXSnapshot.self) }
-        guard let q = try quote(from: row.currency, to: base, date: row.date) else { return nil }
-        // Late quotes augment the audit trail, without rewriting a posted operation.
-        try db.execute("INSERT OR IGNORE INTO flow_valuations VALUES (?, ?, ?);", params: [.text(rootID), .text(base.rawValue), .text(try CashflowSchema.json(q))])
-        return q
+        // Reporting uses the same temporary fixed rate as accounts and the dashboard.
+        // Historical posting snapshots remain available in the audit payload.
+        try quote(from: row.currency, to: base, date: row.date)
     }
 
     func reconciliations() throws -> [Reconciliation] { try db.query("SELECT payload FROM flow_reconciliations ORDER BY rowid;").map { try $0.decode(Reconciliation.self) } }
