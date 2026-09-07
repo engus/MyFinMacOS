@@ -17,6 +17,7 @@ struct AccountGroup: Identifiable, Equatable {
 @MainActor
 final class AccountsListModel: ObservableObject {
     @Published private(set) var accounts: [Account] = []
+    @Published private(set) var institutionNames: [String: String] = [:]
 
     private weak var session: AppSession?
 
@@ -34,6 +35,12 @@ final class AccountsListModel: ObservableObject {
     }
 
     func reload() {
+        let rows = (try? session?.connection?.query("SELECT id, name FROM institutions;")) ?? []
+        institutionNames = rows.reduce(into: [:]) { result, row in
+            if case let .text(id)? = row["id"], case let .text(name)? = row["name"] {
+                result[id] = name
+            }
+        }
         accounts = accountService?.listAccounts(includeArchived: true) ?? []
     }
 
@@ -162,11 +169,6 @@ final class AccountsListModel: ObservableObject {
     }
 
     private func institutionName(id: String) -> String? {
-        guard let connection = session?.connection else { return nil }
-        let rows = (try? connection.query("SELECT name FROM institutions WHERE id = ?;", params: [.text(id)])) ?? []
-        if case let .text(name)? = rows.first?["name"] {
-            return name
-        }
-        return nil
+        institutionNames[id]
     }
 }

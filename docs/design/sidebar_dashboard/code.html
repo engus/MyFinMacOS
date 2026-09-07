@@ -1,0 +1,497 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>MyFin — Personal Wealth &amp; Cashflow Manager</title>
+<!-- Tailwind CSS v3 with forms & container queries -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration -->
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            apple: [
+              '-apple-system',
+              'BlinkMacSystemFont',
+              '"SF Pro Display"',
+              '"SF Pro Text"',
+              'system-ui',
+              'sans-serif'
+            ],
+            mono: [
+              '"SF Mono"',
+              'Menlo',
+              'Monaco',
+              'Consolas',
+              'monospace'
+            ]
+          },
+          colors: {
+            macBlue: '#007AFF',
+            macBlueHover: '#0066d6',
+            macBg: '#F5F5F7',
+            macSidebar: 'rgba(246, 247, 251, 0.82)',
+            macBorder: 'rgba(0, 0, 0, 0.08)',
+            macCardBorder: 'rgba(0, 0, 0, 0.06)',
+            macTextSubtle: '#86868B',
+            macGreen: '#34C759',
+            macOrange: '#FF9500',
+            macRed: '#FF3B30'
+          },
+          boxShadow: {
+            'mac-window': '0 25px 65px -12px rgba(0, 0, 0, 0.35), 0 0 1px 1px rgba(0, 0, 0, 0.08)',
+            'mac-card': '0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 1px rgba(0,0,0,0.02)',
+            'active-pill': '0 2px 4px rgba(0, 122, 255, 0.28), inset 0 1px 0.5px rgba(255, 255, 255, 0.25)'
+          }
+        }
+      }
+    }
+  </script>
+<!-- Typography & Window Base Styles -->
+<style data-purpose="typography">
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.011em;
+    }
+    .tracking-tighter-title {
+      letter-spacing: -0.035em;
+    }
+    .tabular-numbers {
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+<!-- macOS Desktop Glass Effect and UI Polish -->
+<style data-purpose="macos-effects">
+    .mac-blur-sidebar {
+      backdrop-filter: blur(28px) saturate(190%);
+      -webkit-backdrop-filter: blur(28px) saturate(190%);
+    }
+    .traffic-light:hover .traffic-icon {
+      opacity: 1;
+    }
+    /* Custom scrollbar for clean macOS look */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 0, 0, 0.25);
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-slate-800 via-zinc-900 to-stone-900 min-h-screen flex items-center justify-center p-3 sm:p-6 md:p-8 select-none">
+<!-- BEGIN: MacOSAppWindow -->
+<!-- Outer Native macOS App Window Container with 14px rounded corners and drop shadow -->
+<div class="relative w-full max-w-[1280px] h-[860px] max-h-[94vh] bg-white rounded-[14px] shadow-mac-window border border-black/15 flex flex-row overflow-hidden text-slate-900">
+<!-- BEGIN: AppSidebar -->
+<!-- Left Navigation Sidebar (270px wide, frosted vibrancy finish) -->
+<aside class="w-[270px] flex-shrink-0 flex flex-col justify-between bg-macSidebar mac-blur-sidebar border-r border-macBorder relative z-10">
+<!-- Top Section: Window Controls & Navigation -->
+<div class="flex flex-col pt-3.5 px-3">
+<!-- Window Traffic Light Buttons & Sidebar Collapse Toggle -->
+<div class="flex items-center justify-between px-1.5 pb-4">
+<!-- macOS Traffic Lights (Close, Minimize, Expand) -->
+<div class="flex items-center space-x-2 group">
+<button aria-label="Close window" class="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E] flex items-center justify-center traffic-light shadow-sm" title="Close">
+<svg class="traffic-icon w-2 h-2 text-[#7F1813] opacity-0 transition-opacity" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+<path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+<button aria-label="Minimize window" class="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123] flex items-center justify-center traffic-light shadow-sm" title="Minimize">
+<svg class="traffic-icon w-2 h-2 text-[#855B09] opacity-0 transition-opacity" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+<path d="M20 12H4" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+<button aria-label="Zoom window" class="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29] flex items-center justify-center traffic-light shadow-sm" title="Zoom">
+<svg class="traffic-icon w-2 h-2 text-[#0A5614] opacity-0 transition-opacity" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+<path d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+</div>
+<!-- macOS Sidebar Collapse / Pane Toggle Button (SF Symbol style) -->
+<button aria-label="Toggle sidebar" class="p-1 rounded text-slate-500 hover:text-slate-800 hover:bg-black/5 transition-colors" title="Toggle Sidebar">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24">
+<rect height="18" rx="3" ry="3" width="18" x="3" y="3"></rect>
+<line x1="9" x2="9" y1="3" y2="21"></line>
+</svg>
+</button>
+</div>
+<!-- Main Navigation Items -->
+<nav class="space-y-1">
+<!-- Active Item: Dashboard (SF Blue Pill as seen in original screenshot) -->
+<a class="group flex items-center justify-between px-3 py-1.5 rounded-[7px] bg-macBlue text-white shadow-active-pill font-medium text-[13px] transition-all" href="#">
+<div class="flex items-center space-x-2.5">
+<svg class="w-4 h-4 text-white opacity-95" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+<path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="">Dashboard</span>
+</div>
+
+</a>
+<!-- Accounts Collapsible Section -->
+<div class="pt-3 pb-1">
+<!-- Section Header with Disclosure Chevron and quick add button -->
+<div class="flex items-center justify-between px-2.5 py-1 text-[11.5px] font-semibold tracking-wide text-slate-500 hover:text-slate-800 cursor-pointer group">
+<div class="flex items-center space-x-1.5">
+<svg class="w-2.5 h-2.5 text-slate-400 group-hover:text-slate-600 transform rotate-0 transition-transform" fill="currentColor" viewBox="0 0 20 20">
+<path clip-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" fill-rule="evenodd"></path>
+</svg>
+<span class="">Accounts</span>
+</div>
+<button aria-label="Add new account" class="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-black/5 rounded text-slate-500 hover:text-slate-900 transition-opacity" title="Add Account">
+<svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+<path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+</div>
+<!-- Nested Account List matching screenshot exactly with enhanced micro-details -->
+<div class="mt-0.5 space-y-0.5 pl-2">
+<!-- Account 1: T-Bank (1 000 KZT) -->
+<a class="flex items-center justify-between px-2.5 py-1.5 rounded-[6px] text-[12.5px] text-slate-700 hover:bg-black/[0.04] active:bg-black/[0.07] transition-colors group" href="#">
+<div class="flex items-center space-x-2 truncate">
+<div class="w-2 h-2 rounded-full bg-amber-400"></div>
+<span class="font-medium truncate">T-Bank</span>
+</div>
+<div class="flex items-center space-x-1 text-slate-900 text-[12px] tabular-numbers font-medium">
+<span class="">1 000</span>
+<span class="text-[10px] text-slate-400 uppercase font-semibold">KZT</span>
+</div>
+</a>
+<!-- Account 2: Cash · Kazakhstan (26 000 USD) -->
+<a class="flex items-center justify-between px-2.5 py-1.5 rounded-[6px] text-[12.5px] text-slate-700 hover:bg-black/[0.04] active:bg-black/[0.07] transition-colors group" href="#">
+<div class="flex items-center space-x-2 truncate">
+<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+<span class="font-medium truncate">Cash · Kazakhstan</span>
+</div>
+<div class="flex items-center space-x-1 text-slate-900 text-[12px] tabular-numbers font-medium">
+<span class="">26 000</span>
+<span class="text-[10px] text-slate-400 uppercase font-semibold">USD</span>
+</div>
+</a>
+<!-- Account 3: IBKR · Bank account (500 000 USD) -->
+<a class="flex items-center justify-between px-2.5 py-1.5 rounded-[6px] text-[12.5px] text-slate-700 hover:bg-black/[0.04] active:bg-black/[0.07] transition-colors group" href="#">
+<div class="flex items-center space-x-2 truncate">
+<div class="w-2 h-2 rounded-full bg-blue-500"></div>
+<span class="font-medium truncate" title="Interactive Brokers">IBKR · Bank acc...</span>
+</div>
+<div class="flex items-center space-x-1 text-slate-900 text-[12px] tabular-numbers font-medium">
+<span class="">500 000</span>
+<span class="text-[10px] text-slate-400 uppercase font-semibold">USD</span>
+</div>
+</a>
+</div>
+</div>
+<!-- Other Core Navigation Items -->
+<div class="space-y-0.5 pt-1">
+<!-- Cashflow Item -->
+<a class="flex items-center space-x-2.5 px-3 py-1.5 rounded-[7px] text-[13px] text-slate-700 hover:bg-black/[0.04] active:bg-black/[0.07] font-normal transition-colors" href="#">
+<svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+<path d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="">Cashflow</span>
+</a>
+<!-- Assets Item -->
+<a class="flex items-center space-x-2.5 px-3 py-1.5 rounded-[7px] text-[13px] text-slate-700 hover:bg-black/[0.04] active:bg-black/[0.07] font-normal transition-colors" href="#">
+<svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+<path d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" stroke-linecap="round" stroke-linejoin="round"></path>
+<path d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="">Assets</span>
+</a>
+<!-- Analytics Item (HIG Expansion) -->
+<a class="flex items-center space-x-2.5 px-3 py-1.5 rounded-[7px] text-[13px] text-slate-700 hover:bg-black/[0.04] active:bg-black/[0.07] font-normal transition-colors" href="#">
+<svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+<path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="">Analytics</span>
+</a>
+</div>
+</nav>
+</div>
+<!-- Bottom Profile Bar with divider & macOS popover indicator -->
+<div class="border-t border-macBorder p-2.5 bg-black/[0.01]">
+<div class="flex items-center justify-between p-1.5 rounded-[7px] hover:bg-black/[0.05] cursor-pointer transition-colors group">
+<div class="flex items-center space-x-2.5">
+<!-- Green Status Badge / Avatar as seen in screenshot -->
+<div class="relative w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-white text-[11px] font-bold shadow-xs">
+<svg class="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 24 24">
+<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+</svg>
+<span class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-white"></span>
+</div>
+<div class="flex flex-col text-left leading-tight">
+<span class="text-[13px] font-medium text-slate-900 group-hover:text-black">Yevgeniy</span>
+<span class="text-[10.5px] text-slate-400">Pro Account</span>
+</div>
+</div>
+<!-- Settings Trigger -->
+<svg class="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-colors" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+<path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+</div>
+</aside>
+<!-- END: AppSidebar -->
+<!-- BEGIN: MainContentArea -->
+<!-- Right Main Pane: Modular Bento Grid with Toolbar, Balance Banner, 3-Col KPI Cards, and 60/40 Split Lower Section -->
+<main class="flex-1 flex flex-col bg-[#FCFCFD] overflow-y-auto">
+<!-- Top macOS Window Header Bar -->
+<header class="h-[52px] border-b border-macBorder flex items-center justify-between px-6 flex-shrink-0 bg-white/70 backdrop-blur-md sticky top-0 z-20">
+<!-- App Title / Window Breadcrumb -->
+<div class="flex items-center space-x-3">
+<h1 class="text-[14px] font-semibold text-slate-900 tracking-tight">MyFin</h1>
+<span class="text-slate-300">/</span>
+<span class="text-[12.5px] text-slate-500 font-normal">Dashboard</span>
+</div>
+<!-- Toolbar Actions & Filters -->
+<div class="flex items-center space-x-3">
+<!-- Segmented Time Period Selector (macOS Style) -->
+<button class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-[6px] bg-black/[0.04] hover:bg-black/[0.08] text-[13px] font-medium text-slate-700 transition-colors border border-black/5 shadow-sm"><svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round"></path></svg><span class="">Sep 2026</span><svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+<!-- Currency Selector Badge -->
+<div class="flex items-center bg-slate-100 hover:bg-slate-200/80 px-2.5 py-1 rounded-md text-[12px] text-slate-700 font-medium cursor-pointer transition-colors border border-black/5">
+<span class="">KZT (₸)</span>
+<svg class="w-3 h-3 ml-1.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+<path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+<!-- Action Button: + Transaction -->
+<button class="flex items-center space-x-1.5 px-3 py-1 bg-macBlue hover:bg-macBlueHover text-white rounded-md text-[12.5px] font-medium shadow-xs transition-colors" title="Record new transaction">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+<path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="">Add Entry</span>
+</button>
+</div>
+</header>
+<!-- Central Dashboard Content: Bento Layout -->
+<div class="flex-1 p-6 md:p-8 flex flex-col space-y-6 max-w-[1060px] mx-auto w-full">
+<!-- Top Hero: Refined macOS Balance Bar with Horizontal Alignment -->
+<section class="w-full bg-white rounded-xl border border-macCardBorder p-5 md:p-6 shadow-mac-card flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+<div class="flex flex-col">
+<div class="flex items-center space-x-2.5 mb-1.5">
+<h2 class="text-slate-900 text-2xl font-bold tracking-tight">Dashboard</h2>
+<span class="text-slate-300">•</span>
+<p class="text-slate-400 text-[13px] font-medium">Total balance</p>
+<span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10.5px] font-medium uppercase tracking-wide">
+<span class="w-1.5 h-1.5 rounded-full bg-macGreen"></span>
+<span class="">Live Portfolio Valuation</span>
+</span>
+</div>
+<div class="flex items-baseline space-x-2">
+<div class="text-3xl md:text-[38px] font-bold tracking-tighter-title text-slate-900 tabular-numbers leading-tight">
+242 224 000 <span class="text-2xl md:text-[28px] font-semibold text-slate-700">KZT</span>
+</div>
+</div>
+</div>
+<!-- Secondary Conversion & Performance Badge -->
+<div class="flex flex-wrap md:flex-col items-start md:items-end justify-between gap-1.5 border-t md:border-t-0 pt-3 md:pt-0 border-slate-100">
+<span class="text-slate-500 tabular-numbers font-normal text-[13px]">≈ $526 573.91 USD</span>
+<span class="inline-flex items-center text-emerald-600 font-medium text-[12.5px] bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200/50">
+<svg class="w-3.5 h-3.5 mr-1 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+<path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
++4.24% (+9.8M KZT) this month
+</span>
+</div>
+</section>
+<!-- Middle section: 3-column equal metric cards -->
+<section class="w-full grid grid-cols-1 md:grid-cols-3 gap-4" data-purpose="quick-stats-grid">
+<!-- Card 1: Liquid Cash -->
+<div class="p-4 rounded-xl bg-white border border-macCardBorder shadow-mac-card hover:border-slate-300/80 transition-all flex flex-col justify-between">
+<div class="flex items-center justify-between text-slate-500 mb-3">
+<span class="text-[12px] font-medium uppercase tracking-wider">Cash &amp; Bank</span>
+<span class="p-1.5 rounded-md bg-amber-50 text-amber-600">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+<path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</span>
+</div>
+<div>
+<div class="text-[20px] font-bold text-slate-900 tabular-numbers">11 961 000 ₸</div>
+<p class="text-[11.5px] text-slate-400 mt-0.5">T-Bank + Physical Cash ($26K)</p>
+</div>
+<div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+<span class="">Portion of Total</span>
+<span class="font-semibold text-slate-700">4.94%</span>
+</div>
+</div>
+<!-- Card 2: Brokerage / Investment -->
+<div class="p-4 rounded-xl bg-white border border-macCardBorder shadow-mac-card hover:border-slate-300/80 transition-all flex flex-col justify-between">
+<div class="flex items-center justify-between text-slate-500 mb-3">
+<span class="text-[12px] font-medium uppercase tracking-wider">Investments (IBKR)</span>
+<span class="p-1.5 rounded-md bg-blue-50 text-blue-600">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+<path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</span>
+</div>
+<div>
+<div class="text-[20px] font-bold text-slate-900 tabular-numbers">230 263 000 ₸</div>
+<p class="text-[11.5px] text-slate-400 mt-0.5">500 000 USD Equities &amp; Bonds</p>
+</div>
+<div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+<span class="">Portion of Total</span>
+<span class="font-semibold text-slate-700">95.06%</span>
+</div>
+</div>
+<!-- Card 3: Monthly Net Cashflow -->
+<div class="p-4 rounded-xl bg-white border border-macCardBorder shadow-mac-card hover:border-slate-300/80 transition-all flex flex-col justify-between">
+<div class="flex items-center justify-between text-slate-500 mb-3">
+<span class="text-[12px] font-medium uppercase tracking-wider">Net Cashflow (Sep)</span>
+<span class="p-1.5 rounded-md bg-emerald-50 text-emerald-600">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+<path d="M7 11l5-5m0 0l5 5m-5-5v12" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</span>
+</div>
+<div>
+<div class="text-[20px] font-bold text-emerald-600 tabular-numbers">+1 450 000 ₸</div>
+<p class="text-[11.5px] text-slate-400 mt-0.5">Income 2.1M · Expenses 650K</p>
+</div>
+<div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+<span class="">Savings Rate</span>
+<span class="font-semibold text-emerald-600">69.0%</span>
+</div>
+</div>
+</section>
+<!-- Lower section: 2-column split (Left 60% / Right 40%) -->
+<div class="w-full grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+<!-- Left column (60% width): Recent Movements transaction list -->
+<section class="lg:col-span-7 bg-white rounded-xl border border-macCardBorder overflow-hidden shadow-mac-card">
+<div class="px-5 py-3.5 border-b border-macBorder flex items-center justify-between bg-slate-50/50">
+<div>
+<h3 class="text-[13px] font-semibold text-slate-800">Recent Movements</h3>
+<span class="text-[11px] text-slate-400">Updated just now</span>
+</div>
+<a class="text-[12px] text-macBlue hover:text-macBlueHover font-medium transition-colors" href="#">View all →</a>
+</div>
+<div class="divide-y divide-slate-100 text-[12.5px]">
+<!-- Row 1: Dividend / Stock inflow -->
+<div class="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50/70 transition-colors">
+<div class="flex items-center space-x-3">
+<div class="w-7 h-7 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs flex-shrink-0">
+IB
+</div>
+<div>
+<div class="font-medium text-slate-900">Dividend Yield — VWRA</div>
+<div class="text-[11px] text-slate-400">IBKR · Bank account · Yesterday</div>
+</div>
+</div>
+<div class="text-right flex-shrink-0 pl-2">
+<div class="font-semibold text-emerald-600 tabular-numbers">+640.20 USD</div>
+<div class="text-[11px] text-slate-400 tabular-numbers">≈ +294 800 KZT</div>
+</div>
+</div>
+<!-- Row 2: Cash Operation -->
+<div class="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50/70 transition-colors">
+<div class="flex items-center space-x-3">
+<div class="w-7 h-7 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs flex-shrink-0">
+$
+</div>
+<div>
+<div class="font-medium text-slate-900">Cash Deposit Almaty</div>
+<div class="text-[11px] text-slate-400">Cash · Kazakhstan · Sep 02</div>
+</div>
+</div>
+<div class="text-right flex-shrink-0 pl-2">
+<div class="font-semibold text-slate-900 tabular-numbers">+2 000 USD</div>
+<div class="text-[11px] text-slate-400 tabular-numbers">Vault replenishment</div>
+</div>
+</div>
+<!-- Row 3: T-Bank Expense -->
+<div class="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50/70 transition-colors">
+<div class="flex items-center space-x-3">
+<div class="w-7 h-7 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-xs flex-shrink-0">
+₸
+</div>
+<div>
+<div class="font-medium text-slate-900">Mobile Services &amp; Cloud</div>
+<div class="text-[11px] text-slate-400">T-Bank · Aug 31</div>
+</div>
+</div>
+<div class="text-right flex-shrink-0 pl-2">
+<div class="font-semibold text-rose-500 tabular-numbers">-4 900 KZT</div>
+<div class="text-[11px] text-slate-400">Card payment</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Right column (40% width): Capital Distribution visual asset allocation card -->
+<section class="lg:col-span-5 bg-white rounded-xl border border-macCardBorder p-5 shadow-mac-card space-y-4" data-purpose="asset-distribution">
+<div class="flex items-center justify-between">
+<div>
+<h3 class="text-[13.5px] font-semibold text-slate-900">Capital Distribution</h3>
+<p class="text-[11.5px] text-slate-400 mt-0.5">Account exposure across currencies and institutions</p>
+</div>
+<a class="text-[12px] text-macBlue hover:text-macBlueHover font-medium flex-shrink-0" href="#">Manage Accounts →</a>
+</div>
+<!-- Distribution Multi-Segment Bar -->
+<div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex">
+<!-- IBKR Share (approx 95%) -->
+<div class="h-full bg-blue-500 rounded-l-full" style="width: 95.06%" title="IBKR Account (95.06%)"></div>
+<!-- Cash Kazakhstan (approx 4.9%) -->
+<div class="h-full bg-emerald-500" style="width: 4.90%" title="Cash Kazakhstan (4.90%)"></div>
+<!-- T-Bank (approx 0.04%) -->
+<div class="h-full bg-amber-400 rounded-r-full" style="width: 0.04%" title="T-Bank (0.04%)"></div>
+</div>
+<!-- Stacked Vertical Legend List with Percentages and Progress Indicators -->
+<div class="divide-y divide-slate-100 pt-1">
+<!-- Item 1: IBKR USD -->
+<div class="py-2.5 flex items-center justify-between text-[12px]">
+<div class="flex items-center space-x-2">
+<span class="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0"></span>
+<div class="flex flex-col">
+<span class="font-medium text-slate-800">IBKR USD</span>
+<span class="text-[11px] text-slate-400 tabular-numbers">500 000 USD</span>
+</div>
+</div>
+<div class="text-right">
+<span class="font-semibold text-slate-800 tabular-numbers">95.1%</span>
+</div>
+</div>
+<!-- Item 2: Cash USD -->
+<div class="py-2.5 flex items-center justify-between text-[12px]">
+<div class="flex items-center space-x-2">
+<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0"></span>
+<div class="flex flex-col">
+<span class="font-medium text-slate-800">Cash USD</span>
+<span class="text-[11px] text-slate-400 tabular-numbers">26 000 USD</span>
+</div>
+</div>
+<div class="text-right">
+<span class="font-semibold text-slate-800 tabular-numbers">4.9%</span>
+</div>
+</div>
+<!-- Item 3: T-Bank KZT -->
+<div class="py-2.5 flex items-center justify-between text-[12px]">
+<div class="flex items-center space-x-2">
+<span class="w-2.5 h-2.5 rounded-full bg-amber-400 flex-shrink-0"></span>
+<div class="flex flex-col">
+<span class="font-medium text-slate-800">T-Bank KZT</span>
+<span class="text-[11px] text-slate-400 tabular-numbers">1 000 KZT</span>
+</div>
+</div>
+<div class="text-right">
+<span class="font-semibold text-slate-800 tabular-numbers">&lt;0.1%</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+<!-- END: MainContentArea -->
+</div>
+<!-- END: MacOSAppWindow -->
+
+
+</body></html>

@@ -275,4 +275,29 @@ final class AccountServiceTests: XCTestCase {
         let history = service.balanceHistory(accountId: account.id)
         XCTAssertEqual(history.map(\.balance), [100, 200, 50])
     }
+    func test_currencyChangeRecordsNewSnapshotEvenWhenNumberDoesNotChange() throws {
+        let (service, _, _) = try makeServices()
+        let result = service.createAccount(country: .kz, type: .cash, institutionSelection: .none,
+                                           currency: .usd, openingBalance: 100, name: "Cash", balanceDate: nil)
+        guard case .success(let account) = result else { return XCTFail("expected success") }
+        _ = service.updateAccount(id: account.id, name: account.name, country: .kz, type: .cash,
+                                  currency: .kzt, institutionSelection: .none, openingBalance: 100)
+        let history = service.balanceHistory(accountId: account.id)
+        XCTAssertEqual(history.map(\.currency), [.usd, .kzt])
+        XCTAssertEqual(history.map(\.balance), [100, 100])
+    }
+
+    func test_historyWriteFailureRollsBackTheBalanceUpdate() throws {
+        let (service, _, connection) = try makeServices()
+        let result = service.createAccount(country: .kz, type: .cash, institutionSelection: .none,
+                                           currency: .usd, openingBalance: 100, name: "Cash", balanceDate: nil)
+        guard case .success(let account) = result else { return XCTFail("expected success") }
+        try connection.execute("CREATE TRIGGER reject_history BEFORE INSERT ON balance_history BEGIN SELECT RAISE(ABORT, 'unavailable'); END;")
+        let updated = service.updateAccount(id: account.id, name: account.name, country: .kz, type: .cash,
+                                            currency: .usd, institutionSelection: .none, openingBalance: 200)
+        guard case .failure = updated else { return XCTFail("must report failed update") }
+        XCTAssertEqual(service.listAccounts(includeArchived: false).first?.openingBalance, 100)
+        XCTAssertEqual(service.balanceHistory(accountId: account.id).map(\.balance), [100])
+    }
+
 }

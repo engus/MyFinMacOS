@@ -86,7 +86,7 @@ final class DatabaseServiceTests: XCTestCase {
 
     func test_open_freshDatabase_endsUpAtLatestUserVersion() throws {
         let connection = try makeConnection()
-        XCTAssertEqual(try connection.userVersion, 4)
+        XCTAssertEqual(try connection.userVersion, 8)
     }
 
     func test_open_freshDatabase_createsExpectedTables() throws {
@@ -107,11 +107,11 @@ final class DatabaseServiceTests: XCTestCase {
     func test_reopeningAlreadyMigratedDatabase_isANoOp() throws {
         let url = tempDatabaseURL()
         let first = try DatabaseConnection.open(at: url, password: "pw")
-        XCTAssertEqual(try first.userVersion, 4)
+        XCTAssertEqual(try first.userVersion, 8)
         first.close()
 
         let second = try DatabaseConnection.open(at: url, password: "pw")
-        XCTAssertEqual(try second.userVersion, 4)
+        XCTAssertEqual(try second.userVersion, 8)
     }
 
     func test_open_freshDatabase_seedsSystemInstitutionCatalog() throws {
@@ -138,4 +138,71 @@ final class DatabaseServiceTests: XCTestCase {
         guard case let .int(count) = rows[0]["c"] else { return XCTFail("expected int") }
         XCTAssertEqual(Int(count), SystemInstitutionCatalog.all.count)
     }
+    func test_versionFourHistoryMigratesWithoutInventingCurrency() throws {
+        let url = tempDatabaseURL()
+        let connection = try DatabaseConnection.open(at: url, password: "pw")
+        try connection.execute("DROP TABLE balance_history;")
+        try connection.execute("CREATE TABLE balance_history (id TEXT PRIMARY KEY, account_id TEXT NOT NULL, balance TEXT NOT NULL, recorded_at TEXT NOT NULL);")
+        try connection.execute("INSERT INTO balance_history VALUES ('legacy', 'account', '100', '2026-09-04T10:00:00Z');")
+        try connection.setUserVersion(4)
+        connection.close()
+        let migrated = try DatabaseConnection.open(at: url, password: "pw")
+        let row = try XCTUnwrap(migrated.query("SELECT * FROM balance_history;").first)
+        XCTAssertEqual(row["balance"], .text("100"))
+        XCTAssertEqual(row["currency"], .null)
+        XCTAssertEqual(try migrated.userVersion, 8)
+    }
+
+    func test_versionSixAppearanceMigrationRemovesUnusedCardMetadataAndKeepsCoreAppearance() throws {
+        let url = tempDatabaseURL()
+        let connection = try DatabaseConnection.open(at: url, password: "pw")
+        let service = AccountService(connection: connection, institutionService: InstitutionService(connection: connection))
+        var appearance = AccountAppearance()
+        appearance.themePreset = .emeraldGlass
+        appearance.tags = ["Salary"]
+        appearance.paymentNetwork = .visa
+        let account = try service.createAccount(
+            country: .kz,
+            type: .debitCard,
+            institutionSelection: .existing(id: "kz.kaspi-bank"),
+            currency: .kzt,
+            openingBalance: 0,
+            name: "Card",
+            balanceDate: nil,
+            appearance: appearance
+        ).get()
+        for definition in [
+            "card_tier TEXT", "cardholder_name TEXT", "shows_cardholder_name INTEGER",
+            "card_suffix TEXT", "masks_card_suffix INTEGER", "chip_style TEXT", "shows_nfc INTEGER"
+        ] {
+            try connection.execute("ALTER TABLE account_appearances ADD COLUMN \(definition);")
+        }
+        try connection.execute(
+            """
+            UPDATE account_appearances
+            SET card_tier = 'gold', cardholder_name = 'OWNER', shows_cardholder_name = 1,
+                card_suffix = '4829', masks_card_suffix = 1, chip_style = 'silver', shows_nfc = 1
+            WHERE account_id = ?;
+            """,
+            params: [.text(account.id)]
+        )
+        try connection.setUserVersion(6)
+        connection.close()
+
+        let migrated = try DatabaseConnection.open(at: url, password: "pw")
+        let columns = try migrated.query("PRAGMA table_info(account_appearances);").compactMap { row -> String? in
+            guard case let .text(name) = row["name"] else { return nil }
+            return name
+        }
+        XCTAssertEqual(
+            Set(columns),
+            Set(["account_id", "theme_preset", "accent_tint", "badge_icon", "tags_json", "payment_network"])
+        )
+        let row = try XCTUnwrap(migrated.query("SELECT * FROM account_appearances WHERE account_id = ?;", params: [.text(account.id)]).first)
+        XCTAssertEqual(row["theme_preset"], .text("emeraldGlass"))
+        XCTAssertEqual(row["tags_json"], .text("[\"Salary\"]"))
+        XCTAssertEqual(row["payment_network"], .text("visa"))
+        XCTAssertEqual(try migrated.userVersion, 8)
+    }
+
 }

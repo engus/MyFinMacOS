@@ -42,5 +42,7 @@ struct MyFinApp: App {
             .environmentObject(preferences)
             .preferredColorScheme(resolvedColorScheme)
         }
+        .defaultSize(width: 1280, height: 820)
+        .windowToolbarStyle(.unified(showsTitle: false))
     }
 }

@@ -1,0 +1,514 @@
+<!DOCTYPE html><html class="h-full" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>MyFin — Accounts (New Account Multi-Step Wizard)</title>
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;550;600;700&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS v3 with forms and container-queries -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"SF Pro Text"', 'sans-serif'],
+          },
+          colors: {
+            mac: {
+              accent: '#0058bc',
+              accentHover: '#00479b',
+              trafficRed: '#FF5F57',
+              trafficYellow: '#FEBC2E',
+              trafficGreen: '#28C840',
+              borderLight: '#e5e4ea',
+              borderCard: '#dcdbe2',
+              inputBg: '#f2f2f6',
+              inputHover: '#eae9f0',
+              sidebarBg: '#f6f5fa',
+              windowBg: '#faf9fe',
+              subtext: '#8a8894',
+            }
+          },
+          boxShadow: {
+            'macos-window': '0 30px 90px rgba(0, 0, 0, 0.28), 0 4px 18px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.12)',
+            'macos-sheet': '0 25px 65px -10px rgba(0, 0, 0, 0.32), 0 16px 36px -6px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.08)',
+            'macos-focus': '0 0 0 3.5px rgba(0, 88, 188, 0.35)',
+            'card-specular': '0 18px 40px -10px rgba(0, 40, 100, 0.35), inset 0 1px 1px 0 rgba(255, 255, 255, 0.45)',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="h-full bg-gradient-to-tr from-slate-800 via-indigo-950 to-slate-900 text-slate-800 antialiased font-sans p-4 sm:p-8 flex items-center justify-center select-none overflow-x-hidden">
+<!-- BEGIN: MainDesktopAppContainer -->
+<!-- Outer macOS App Window with Native Chrome -->
+<div class="relative w-full max-w-6xl h-[840px] max-h-[92vh] bg-white rounded-2xl shadow-macos-window border border-black/15 flex flex-col overflow-hidden backdrop-blur-md" data-purpose="macos-window">
+<!-- BEGIN: Titlebar -->
+<!-- Native macOS Titlebar with Traffic Lights and Navigation Header -->
+<header class="h-12 border-b border-mac-borderLight bg-mac-windowBg flex items-center justify-between px-4 shrink-0 relative z-10">
+<!-- Traffic Light Buttons -->
+<div class="flex items-center space-x-2 w-48">
+<button aria-label="Close" class="w-3 h-3 rounded-full bg-mac-trafficRed hover:brightness-90 transition border border-black/10 inline-flex items-center justify-center group" type="button">
+<span class="opacity-0 group-hover:opacity-100 text-[8px] font-bold text-red-900 leading-none">×</span>
+</button>
+<button aria-label="Minimize" class="w-3 h-3 rounded-full bg-mac-trafficYellow hover:brightness-90 transition border border-black/10 inline-flex items-center justify-center group" type="button">
+<span class="opacity-0 group-hover:opacity-100 text-[8px] font-bold text-amber-900 leading-none">−</span>
+</button>
+<button aria-label="Zoom" class="w-3 h-3 rounded-full bg-mac-trafficGreen hover:brightness-90 transition border border-black/10 inline-flex items-center justify-center group" type="button">
+<span class="opacity-0 group-hover:opacity-100 text-[7px] font-bold text-green-900 leading-none">+</span>
+</button>
+</div>
+<!-- Centered Window Title -->
+<div class="text-xs font-semibold text-slate-700 tracking-tight flex items-center gap-1.5 pointer-events-none">
+<svg class="w-3.5 h-3.5 text-mac-accent" fill="currentColor" viewBox="0 0 24 24">
+<path d="M21 7.28V5c0-1.1-.9-2-2-2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-2.28c.59-.35 1-.98 1-1.72V9c0-.74-.41-1.37-1-1.72zM20 9v6h-7V9h7zM5 19V5h14v2h-6c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h6v2H5z"></path>
+</svg>
+<span class="">MyFin — Accounts</span>
+</div>
+<!-- Right Window Controls / Quick Actions -->
+<div class="flex items-center justify-end space-x-2 w-48 text-slate-500">
+<button class="p-1.5 rounded-md hover:bg-slate-200/70 text-slate-600 transition" title="Search">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.35-4.35"></path></svg>
+</button>
+<button class="p-1.5 rounded-md hover:bg-slate-200/70 text-slate-600 transition" title="Settings">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+</button>
+</div>
+</header>
+<!-- END: Titlebar -->
+<!-- BEGIN: WorkspaceLayout -->
+<!-- Window Body Split: Native Sidebar & Primary Accounts Area -->
+<div class="flex-1 flex overflow-hidden relative">
+<!-- BEGIN: AppSidebar -->
+<aside class="w-56 bg-mac-sidebarBg border-r border-mac-borderLight flex flex-col justify-between p-3 select-none shrink-0" data-purpose="app-sidebar">
+<div>
+<!-- Search / Filter Mini Bar -->
+<div class="relative mb-3.5">
+<input class="w-full bg-slate-200/70 text-[11px] rounded-lg pl-7 pr-2.5 py-1.5 border border-transparent focus:border-mac-accent focus:bg-white focus:outline-none transition placeholder-slate-400" placeholder="Quick search..." type="text">
+<svg class="w-3.5 h-3.5 text-slate-400 absolute left-2 top-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.35-4.35"></path></svg>
+</div>
+<!-- Nav Items -->
+<div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase px-2.5 mb-1.5">Overview</div>
+<nav class="space-y-0.5">
+<a class="flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-600 rounded-lg hover:bg-slate-200/60 font-medium" href="#">
+<svg class="w-4 h-4 opacity-75" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect height="9" rx="1" width="7" x="3" y="3"></rect><rect height="5" rx="1" width="7" x="14" y="3"></rect><rect height="9" rx="1" width="7" x="14" y="12"></rect><rect height="5" rx="1" width="7" x="3" y="16"></rect></svg>
+<span class="">Dashboard</span>
+</a>
+<!-- Active Accounts Menu Item -->
+<a class="flex items-center justify-between px-2.5 py-1.5 text-xs text-mac-accent bg-blue-50/90 rounded-lg font-semibold shadow-xs" href="#">
+<div class="flex items-center gap-2">
+<svg class="w-4 h-4 text-mac-accent" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect height="14" rx="2" width="20" x="2" y="5"></rect><line x1="2" x2="22" y1="10" y2="10"></line></svg>
+<span class="">Accounts</span>
+</div>
+<span class="text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded-full">8</span>
+</a>
+<a class="flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-600 rounded-lg hover:bg-slate-200/60 font-medium" href="#">
+<svg class="w-4 h-4 opacity-75" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>
+<span class="">Cashflow</span>
+</a>
+<a class="flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-600 rounded-lg hover:bg-slate-200/60 font-medium" href="#">
+<svg class="w-4 h-4 opacity-75" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+<span class="">Assets</span>
+</a>
+<a class="flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-600 rounded-lg hover:bg-slate-200/60 font-medium" href="#">
+<svg class="w-4 h-4 opacity-75" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg>
+<span class="">Analytics</span>
+</a>
+</nav>
+<div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase px-2.5 mt-5 mb-1.5">Portfolios</div>
+<nav class="space-y-0.5">
+<div class="flex items-center justify-between px-2.5 py-1 text-xs text-slate-600 rounded-md hover:bg-slate-200/50">
+<span class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+<span class="">Main Vault</span>
+</span>
+<span class="text-[10px] text-slate-400">$14.2k</span>
+</div>
+<div class="flex items-center justify-between px-2.5 py-1 text-xs text-slate-600 rounded-md hover:bg-slate-200/50">
+<span class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-amber-500"></span>
+<span class="">Crypto &amp; Stocks</span>
+</span>
+<span class="text-[10px] text-slate-400">$8.9k</span>
+</div>
+</nav>
+</div>
+<!-- User Profile Card -->
+<div class="pt-2 border-t border-mac-borderLight/80 flex items-center justify-between px-1">
+<div class="flex items-center gap-2">
+<div class="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white text-[11px] font-bold shadow-xs">
+              Y
+            </div>
+<div class="leading-tight">
+<div class="text-xs font-semibold text-slate-800">Yevgeniy</div>
+<div class="text-[10px] text-mac-subtext">Pro Plan</div>
+</div>
+</div>
+<button class="text-slate-400 hover:text-slate-600 p-1 rounded">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+</button>
+</div>
+</aside>
+<!-- END: AppSidebar -->
+<!-- BEGIN: BackgroundAccountsView -->
+<!-- Underlying Accounts View (Visible slightly blurred / dimmed behind the modal) -->
+<main class="flex-1 bg-white p-6 overflow-y-auto flex flex-col justify-start">
+<div class="flex items-center justify-between pb-5 border-b border-mac-borderLight">
+<div>
+<h1 class="text-xl font-bold text-slate-900 tracking-tight">Accounts &amp; Balances</h1>
+<p class="text-xs text-mac-subtext mt-0.5">8 connected accounts across 4 currencies</p>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1.5 text-xs font-medium bg-mac-inputBg rounded-lg text-slate-700 hover:bg-slate-200 transition">Export</button>
+<button class="px-3 py-1.5 text-xs font-semibold bg-mac-accent text-white rounded-lg shadow-sm hover:bg-mac-accentHover transition flex items-center gap-1.5">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>
+<span class="">Add Account</span>
+</button>
+</div>
+</div>
+<!-- Sample Mock Rows to establish app context -->
+<div class="mt-5 space-y-2.5 opacity-40 select-none">
+<div class="p-3.5 rounded-xl border border-slate-200 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-red-600 text-white font-bold text-xs flex items-center justify-center">K</div>
+<div>
+<p class="text-xs font-semibold text-slate-800">Kaspi Gold</p>
+<p class="text-[11px] text-slate-400">Debit card • Kazakhstan</p>
+</div>
+</div>
+<div class="text-right">
+<div class="text-xs font-semibold text-slate-800">₸ 1,420,500.00</div>
+<div class="text-[10px] text-slate-400">≈ $2,950.00</div>
+</div>
+</div>
+<div class="p-3.5 rounded-xl border border-slate-200 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-blue-800 text-white font-bold text-xs flex items-center justify-center">IB</div>
+<div>
+<p class="text-xs font-semibold text-slate-800">Interactive Brokers</p>
+<p class="text-[11px] text-slate-400">Brokerage • United States</p>
+</div>
+</div>
+<div class="text-right">
+<div class="text-xs font-semibold text-slate-800">$ 12,850.40</div>
+<div class="text-[10px] text-emerald-600">+4.2% this month</div>
+</div>
+</div>
+</div>
+</main>
+<!-- END: BackgroundAccountsView -->
+<!-- BEGIN: ModalSheetBackdropOverlay -->
+<div class="absolute inset-0 bg-slate-900/30 backdrop-blur-[4px] flex items-center justify-center p-4 z-30 transition-all duration-200" data-purpose="sheet-backdrop">
+<!-- BEGIN: NewAccountModalDialog (Variant 1: Multi-Step Wizard with Live Card Preview) -->
+<section class="w-full max-w-[880px] bg-white rounded-2xl shadow-macos-sheet border border-black/10 overflow-hidden flex flex-col transform transition-all animate-in fade-in zoom-in-95 duration-150" data-purpose="new-account-modal">
+<!-- Modal Header with Title & Step Progress Bar -->
+<div class="px-6 pt-4 pb-3 border-b border-mac-borderLight bg-[#fcfbfe]"><div class="flex items-center justify-between"><div class="flex items-center gap-2.5"><div class="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200/80 flex items-center justify-center text-mac-accent"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect height="14" rx="2" width="20" x="2" y="5"></rect><line x1="2" x2="22" y1="10" y2="10"></line></svg></div><h2 class="text-sm font-semibold text-slate-900 tracking-tight">Add New Account</h2></div><button aria-label="Close dialog" class="text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 p-1.5 rounded-full transition" type="button"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></div><div class="mt-3.5 flex items-center gap-2 pt-1 border-t border-slate-200/60"><div class="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50/80 border border-blue-200/70 text-mac-accent text-xs font-semibold"><span class="w-4 h-4 rounded-full bg-mac-accent text-white flex items-center justify-center text-[10px] font-bold">1</span><span class="">1. Account Details</span></div><div class="w-3 h-0.5 bg-slate-200"></div><div class="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100/70 text-slate-500 text-xs font-medium border border-transparent"><span class="w-4 h-4 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-bold">2</span><span class="">2. Appearance</span></div></div></div>
+<!-- Modal 2-Column Body -->
+<div class="grid grid-cols-12 min-h-[460px] max-h-[calc(92vh-190px)] overflow-hidden">
+<!-- LEFT COLUMN: Form & Stepped Inputs -->
+<form class="col-span-7 overflow-y-auto border-r border-mac-borderLight bg-white space-y-3 p-5" id="newAccountForm">
+<!-- Country Selector with Flag Pill -->
+<div>
+<label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Country of Origin</label>
+<div class="relative">
+<select class="w-full h-9 bg-mac-inputBg hover:bg-mac-inputHover text-slate-800 text-xs font-medium rounded-lg pl-3 pr-8 border border-transparent focus:border-mac-accent focus:bg-white focus:ring-2 focus:ring-mac-accent/25 focus:outline-none transition appearance-none cursor-pointer" id="countrySelect">
+<option selected="" value="KZ">🇰🇿 Kazakhstan (KZ)</option>
+<option value="US">🇺🇸 United States (US)</option>
+<option value="EU">🇪🇺 European Union (EU)</option>
+<option value="UK">🇬🇧 United Kingdom (UK)</option>
+<option value="AE">🇦🇪 United Arab Emirates (UAE)</option>
+<option value="GE">🇬🇪 Georgia (GE)</option>
+<option value="TR">🇹🇷 Turkey (TR)</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5"></path><path d="m7 9 5-5 5 5"></path></svg>
+</div>
+</div>
+</div>
+<!-- Account Type Selector Pills -->
+<div>
+<label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Account Type</label>
+<div class="grid grid-cols-3 gap-2" id="typePills">
+<button class="type-pill px-2.5 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 justify-center transition shadow-xs active border-mac-accent bg-blue-50/80 text-mac-accent" data-type="Debit card" type="button">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect height="14" rx="2" width="20" x="2" y="5"></rect><line x1="2" x2="22" y1="10" y2="10"></line></svg>
+<span class="">Debit Card</span>
+</button>
+<button class="type-pill px-2.5 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 justify-center transition border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700" data-type="Bank account" type="button">
+<svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m2 7 10-5 10 5v2H2z"></path><path d="M4 11v6m5-6v6m6-6v6m5-6v6"></path><path d="M2 21h20v-2H2z"></path></svg>
+<span class="">Bank</span>
+</button>
+<button class="type-pill px-2.5 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 justify-center transition border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700" data-type="Cash Wallet" type="button">
+<svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect height="12" rx="2" width="18" x="3" y="6"></rect><circle cx="12" cy="12" r="2"></circle></svg>
+<span class="">Cash</span>
+</button>
+<button class="type-pill px-2.5 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 justify-center transition border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700" data-type="Savings Deposit" type="button">
+<svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+<span class="">Deposit</span>
+</button>
+<button class="type-pill px-2.5 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 justify-center transition border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700" data-type="Brokerage" type="button">
+<svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>
+<span class="">Invest</span>
+</button>
+<button class="type-pill px-2.5 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 justify-center transition border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700" data-type="Crypto Wallet" type="button">
+<svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="m14 8-4 8m0-8h4"></path></svg>
+<span class="">Crypto</span>
+</button>
+</div>
+</div>
+<!-- Financial Institution & Quick Suggestion Chips -->
+<div class="">
+  <div class="flex items-center justify-between mb-1.5">
+    <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Institution / Bank</label>
+    
+  </div>
+  <div class="flex items-center gap-2" id="bankControlRow"><div class="flex items-center gap-1.5 shrink-0" id="bankChips"><button class="bank-chip active text-xs px-2.5 py-1 rounded-md bg-red-50 text-red-700 border border-red-200/80 font-medium hover:bg-red-100 transition flex items-center gap-1.5 shadow-xs" data-bank="Kaspi Bank" type="button"><span class="w-2 h-2 rounded-full bg-red-500"></span><span class="">Kaspi</span></button><button class="bank-chip text-xs px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-200 font-medium hover:bg-slate-200/70 transition flex items-center gap-1.5" data-bank="Halyk Bank" type="button"><span class="w-2 h-2 rounded-full bg-emerald-600"></span><span class="">Halyk</span></button><button class="bank-chip text-xs px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-200 font-medium hover:bg-slate-200/70 transition flex items-center gap-1.5" data-bank="Bank CenterCredit" type="button"><span class="w-2 h-2 rounded-full bg-blue-600"></span><span class="">BCC</span></button></div><div class="relative flex-1 min-w-[130px]"><select class="w-full h-8 bg-mac-inputBg hover:bg-mac-inputHover text-slate-800 text-xs font-medium rounded-lg pl-2.5 pr-6 border border-transparent focus:border-mac-accent focus:bg-white focus:ring-1 focus:ring-mac-accent/30 focus:outline-none transition appearance-none cursor-pointer truncate" id="bankSelect"><option value="">More Banks...</option><option selected="" value="Kaspi Bank">Kaspi Bank</option><option value="Halyk Bank">Halyk Bank</option><option value="Bank CenterCredit">Bank CenterCredit (BCC)</option><option value="Freedom Bank">Freedom Bank</option><option value="T-Bank">T-Bank</option><option value="Bereke Bank">Bereke Bank</option><option value="ForteBank">ForteBank</option><option value="Jusan Bank">Jusan Bank</option><option value="custom">Custom Institution...</option></select><div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-slate-400"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5"></path><path d="m7 9 5-5 5 5"></path></svg></div></div><input id="bankInput" type="hidden" value="Kaspi Bank" class=""></div>
+</div>
+<!-- Account Name & Currency Row -->
+<div><label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5" for="accountName">Account Name</label><input class="w-full h-9 bg-white text-slate-800 text-xs rounded-lg px-3 border border-mac-borderCard hover:border-slate-400 focus:border-mac-accent focus:ring-2 focus:ring-mac-accent/25 focus:outline-none transition" id="accountName" placeholder="e.g. Kaspi Gold" type="text" value="Kaspi Gold"></div>
+<!-- Initial Balance Input -->
+<div><label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5" for="balanceToday">Initial Balance</label><div class="relative flex items-center rounded-lg shadow-macos-focus border border-mac-accent bg-white overflow-hidden"><div class="pl-3 flex items-center pointer-events-none text-slate-500 font-semibold text-sm" id="currSymbolPrefix">₸</div><input class="flex-1 h-9 bg-transparent text-slate-900 font-mono text-sm font-semibold pl-2 pr-3 border-0 focus:ring-0 focus:outline-none select-all" id="balanceToday" placeholder="0.00" type="text" value="142,500.00"><div class="relative border-l border-slate-200 bg-slate-50/80 hover:bg-slate-100 transition"><select class="h-9 bg-transparent text-xs font-semibold text-slate-700 pl-2.5 pr-6 border-0 focus:ring-0 focus:outline-none cursor-pointer appearance-none" id="currencySelect"><option data-sym="₸" selected="" value="KZT">KZT (₸)</option><option data-sym="$" value="USD">USD ($)</option><option data-sym="€" value="EUR">EUR (€)</option><option data-sym="₽" value="RUB">RUB (₽)</option><option data-sym="£" value="GBP">GBP (£)</option><option data-sym="₮" value="USDT">USDT (₮)</option></select><div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-1.5 text-slate-400"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5"></path><path d="m7 9 5-5 5 5"></path></svg></div></div></div></div>
+<!-- Date Checkbox & Card Accent Selector Row -->
+
+</form>
+<!-- RIGHT COLUMN: Real-Time Live Card Mockup & Summary Info -->
+<div class="col-span-5 p-6 bg-gradient-to-b from-[#f8f8fc] to-[#f0eff5] flex flex-col justify-between select-none">
+<div>
+<div class="flex items-center justify-between mb-4">
+<span class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Live Preview</span>
+<span class="text-[10px] font-medium text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+<span class="">Interactive Mockup</span>
+</span>
+</div>
+<!-- Realistic macOS Style Credit/Debit Card -->
+<div class="relative w-full aspect-[1.586/1] rounded-2xl p-5 text-white shadow-card-specular overflow-hidden transition-all duration-300 bg-gradient-to-tr from-slate-900 via-slate-800 to-zinc-800" id="liveCard">
+<!-- Card Ambient Overlay / Texture Details -->
+<div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.22),transparent_60%)] pointer-events-none"></div>
+<div class="absolute -bottom-10 -left-10 w-36 h-36 bg-black/15 rounded-full blur-xl pointer-events-none"></div>
+<div class="relative z-10 h-full flex flex-col justify-between">
+<!-- Top Card Row: Chip & Bank Name -->
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-2">
+<!-- Metallic EMV Chip Icon Mock -->
+<div class="w-9 h-7 rounded-md bg-gradient-to-br from-amber-200 via-yellow-400 to-amber-500 p-1 border border-amber-300/40 shadow-xs flex flex-col justify-between">
+<div class="w-full h-0.5 bg-amber-600/40"></div>
+<div class="w-full h-0.5 bg-amber-600/40"></div>
+<div class="w-full h-0.5 bg-amber-600/40"></div>
+</div>
+<!-- Contactless Symbol -->
+<svg class="w-4 h-4 text-white/70" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+<path d="M8.5 14.5A5 5 0 0 0 12 16a5 5 0 0 0 3.5-1.5"></path>
+<path d="M6 12a8 8 0 0 1 12 0"></path>
+<path d="M3.5 9.5a11 11 0 0 1 17 0"></path>
+</svg>
+</div>
+<div class="text-right">
+<div class="text-xs font-bold tracking-wide uppercase text-white/95" id="previewBank">Kaspi Bank</div>
+<div class="text-[10px] text-white/75 font-medium" id="previewType">Debit card</div>
+</div>
+</div>
+<!-- Center Card Balance -->
+<div class="my-auto pt-2">
+<div class="text-[10px] uppercase font-semibold tracking-wider text-white/70">Current Balance</div>
+<div class="text-2xl font-bold tracking-tight text-white flex items-baseline gap-1" id="previewBalanceDisplay">
+<span class="text-lg font-normal opacity-85" id="previewSymbol">₸</span>
+<span id="previewBalanceNumber" class="">142,500.00</span>
+<span class="text-xs font-mono font-normal opacity-75 ml-1" id="previewCode">KZT</span>
+</div>
+</div>
+<!-- Bottom Card Row: Cardholder / Account Name & Network Logo -->
+<div class="flex items-end justify-between pt-1">
+<div>
+<div class="text-[9px] uppercase tracking-wider text-white/60">Card Label</div>
+<div class="text-xs font-semibold tracking-wide text-white drop-shadow-xs truncate max-w-[170px]" id="previewAccountName">Kaspi Gold</div>
+</div>
+<!-- Minimalist Card Brand Mockup -->
+<div class="flex -space-x-2">
+<div class="w-5 h-5 rounded-full bg-white/40 backdrop-blur-xs"></div>
+<div class="w-5 h-5 rounded-full bg-white/70 backdrop-blur-xs"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Summary Pill List of Attributes -->
+<div class="mt-4 space-y-1.5 bg-white/70 rounded-xl p-3 border border-slate-200/80 text-xs">
+<div class="flex items-center justify-between text-slate-600 py-0.5 border-b border-slate-100">
+<span class="text-slate-400 text-[11px]">Institution</span>
+<span class="font-medium text-slate-800" id="summaryBank">Kaspi Bank</span>
+</div>
+<div class="flex items-center justify-between text-slate-600 py-0.5 border-b border-slate-100">
+<span class="text-slate-400 text-[11px]">Account Type</span>
+<span class="font-medium text-slate-800" id="summaryType">Debit card</span>
+</div>
+<div class="flex items-center justify-between text-slate-600 py-0.5 border-b border-slate-100">
+<span class="text-slate-400 text-[11px]">Primary Currency</span>
+<span class="font-mono font-medium text-slate-800" id="summaryCurrency">KZT (₸)</span>
+</div>
+<div class="flex items-center justify-between text-slate-600 py-0.5">
+<span class="text-slate-400 text-[11px]">Theme Preset</span>
+<span class="font-medium text-slate-800" id="summaryColor">Obsidian</span>
+</div>
+</div>
+</div>
+<!-- Context Quick Tips -->
+</div>
+</div>
+<!-- BEGIN: DialogActionButtons -->
+<!-- Multi-Step Footer Toolbar: Back, Cancel, and Next / Save CTA -->
+<footer class="px-6 py-3.5 bg-slate-50 border-t border-mac-borderLight flex items-center justify-between">
+<div>
+<button class="px-3.5 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 rounded-lg transition inline-flex items-center gap-1.5 opacity-60 cursor-not-allowed" disabled="" type="button">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></svg>
+<span class="">Back</span>
+</button>
+</div>
+<div class="flex items-center gap-2.5">
+<button class="px-4 py-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg shadow-xs transition active:scale-[0.98]" type="button">
+          Cancel
+        </button>
+<button class="px-5 py-1.5 text-xs font-medium text-white bg-mac-accent hover:bg-mac-accentHover border border-blue-700/30 rounded-lg shadow-sm transition active:scale-[0.98] inline-flex items-center gap-1.5" form="newAccountForm" type="submit"><span class="">Next: Appearance</span><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></svg></button>
+</div>
+</footer>
+<!-- END: DialogActionButtons -->
+</section>
+<!-- END: NewAccountModalDialog -->
+</div>
+<!-- END: ModalSheetBackdropOverlay -->
+</div>
+<!-- END: WorkspaceLayout -->
+</div>
+<!-- END: MainDesktopAppContainer -->
+<!-- Interactive Live Sync Script for real-time card reflection -->
+<script data-purpose="card-sync">
+document.addEventListener('DOMContentLoaded', () => {
+  const accountNameInput = document.getElementById('accountName');
+  const balanceTodayInput = document.getElementById('balanceToday');
+  const currencySelect = document.getElementById('currencySelect');
+  const bankInput = document.getElementById('bankInput');
+  const bankChips = document.querySelectorAll('.bank-chip');
+  const typePills = document.querySelectorAll('.type-pill');
+  const colorDots = document.querySelectorAll('.color-dot');
+
+  // Preview elements
+  const previewBank = document.getElementById('previewBank');
+  const previewType = document.getElementById('previewType');
+  const previewAccountName = document.getElementById('previewAccountName');
+  const previewSymbol = document.getElementById('previewSymbol');
+  const previewBalanceNumber = document.getElementById('previewBalanceNumber');
+  const previewCode = document.getElementById('previewCode');
+  const currSymbolPrefix = document.getElementById('currSymbolPrefix');
+  const currCodeBadge = document.getElementById('currCodeBadge');
+  const liveCard = document.getElementById('liveCard');
+  
+  // Summary elements
+  const summaryBank = document.getElementById('summaryBank');
+  const summaryType = document.getElementById('summaryType');
+  const summaryCurrency = document.getElementById('summaryCurrency');
+  const summaryColor = document.getElementById('summaryColor');
+
+  // Sync Account Name
+  if (accountNameInput) {
+    accountNameInput.addEventListener('input', (e) => {
+      const val = e.target.value.trim() || 'Untitled Account';
+      previewAccountName.textContent = val;
+    });
+  }
+
+  // Sync Balance
+  if (balanceTodayInput) {
+    balanceTodayInput.addEventListener('input', (e) => {
+      const val = e.target.value.trim() || '0.00';
+      previewBalanceNumber.textContent = val;
+    });
+    balanceTodayInput.addEventListener('focus', () => balanceTodayInput.select());
+  }
+
+  // Sync Bank Input
+  if (bankInput) {
+    bankInput.addEventListener('input', (e) => {
+      const val = e.target.value.trim() || 'Custom Bank';
+      previewBank.textContent = val;
+      summaryBank.textContent = val;
+    });
+  }
+
+  // Bank Chips Click
+  bankChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      bankChips.forEach(c => {
+        c.classList.remove('active', 'bg-red-50', 'text-red-700', 'border-red-200/80');
+        c.classList.add('bg-slate-100', 'text-slate-700', 'border-slate-200');
+      });
+      chip.classList.add('active', 'bg-red-50', 'text-red-700', 'border-red-200/80');
+      chip.classList.remove('bg-slate-100', 'text-slate-700', 'border-slate-200');
+
+      const bankName = chip.getAttribute('data-bank');
+      bankInput.value = bankName;
+      previewBank.textContent = bankName;
+      summaryBank.textContent = bankName;
+      
+      if (!accountNameInput.value || accountNameInput.value.includes('Bank') || accountNameInput.value.includes('Kaspi')) {
+        accountNameInput.value = bankName + ' Account';
+        previewAccountName.textContent = accountNameInput.value;
+      }
+    });
+  });
+
+  // Type Pills Click
+  typePills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      typePills.forEach(p => {
+        p.classList.remove('active', 'border-mac-accent', 'bg-blue-50/80', 'text-mac-accent');
+        p.classList.add('border-slate-200', 'bg-slate-50', 'text-slate-700');
+      });
+      pill.classList.add('active', 'border-mac-accent', 'bg-blue-50/80', 'text-mac-accent');
+      pill.classList.remove('border-slate-200', 'bg-slate-50', 'text-slate-700');
+
+      const type = pill.getAttribute('data-type');
+      previewType.textContent = type;
+      summaryType.textContent = type;
+    });
+  });
+
+  // Currency Select Change
+  if (currencySelect) {
+    currencySelect.addEventListener('change', (e) => {
+      const selected = e.target.options[e.target.selectedIndex];
+      const sym = selected.getAttribute('data-sym') || '$';
+      const code = selected.value;
+
+      previewSymbol.textContent = sym;
+      previewCode.textContent = code;
+      currSymbolPrefix.textContent = sym;
+      currCodeBadge.textContent = code;
+      summaryCurrency.textContent = `${code} (${sym})`;
+    });
+  }
+
+  // Color Swatch Click
+  colorDots.forEach(dot => {
+    dot.addEventListener('click', () => {
+      colorDots.forEach(d => {
+        d.classList.remove('ring-2', 'ring-offset-1', 'scale-110', 'ring-red-500', 'ring-blue-600', 'ring-emerald-500', 'ring-purple-600', 'ring-slate-700');
+        d.classList.add('opacity-70');
+      });
+      dot.classList.remove('opacity-70');
+      dot.classList.add('scale-110', 'ring-2', 'ring-offset-1', 'ring-slate-800');
+
+      const gradientClasses = dot.getAttribute('data-gradient');
+      const colorName = dot.getAttribute('data-name');
+      
+      // Clear previous gradient classes on card
+      liveCard.className = `relative w-full aspect-[1.586/1] rounded-2xl p-5 text-white shadow-card-specular overflow-hidden transition-all duration-300 bg-gradient-to-tr ${gradientClasses}`;
+      summaryColor.textContent = colorName;
+    });
+  });
+});
+</script>
+
+
+
+
+</body></html>

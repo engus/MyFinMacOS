@@ -44,6 +44,7 @@ final class DatabaseConnection {
         let connection = DatabaseConnection(handle: handle)
         do {
             try connection.runMigrations()
+            try connection.execute("PRAGMA foreign_keys = ON;")
         } catch {
             connection.close()
             throw error
@@ -123,7 +124,8 @@ extension DatabaseConnection {
         bind(params, to: statement)
 
         var rows: [[String: SQLValue]] = []
-        while sqlite3_step(statement) == SQLITE_ROW {
+        var result = sqlite3_step(statement)
+        while result == SQLITE_ROW {
             var row: [String: SQLValue] = [:]
             let columnCount = sqlite3_column_count(statement)
             for i in 0..<columnCount {
@@ -142,7 +144,9 @@ extension DatabaseConnection {
                 }
             }
             rows.append(row)
+            result = sqlite3_step(statement)
         }
+        guard result == SQLITE_DONE else { throw DatabaseError.openFailed(String(cString: sqlite3_errmsg(handle))) }
         return rows
     }
 
@@ -239,7 +243,40 @@ extension DatabaseConnection {
                 recorded_at TEXT NOT NULL
             );
             """
-        ])
+        ]),
+        MigrationStep(version: 5, statements: [
+            // Earlier snapshots have no currency provenance; leave them NULL rather than guessing.
+            "ALTER TABLE balance_history ADD COLUMN currency TEXT;"
+        ]),
+        MigrationStep(version: 6, statements: [
+            """
+            CREATE TABLE IF NOT EXISTS account_appearances (
+                account_id TEXT PRIMARY KEY NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+                theme_preset TEXT NOT NULL, accent_tint TEXT NOT NULL, badge_icon TEXT NOT NULL,
+                tags_json TEXT NOT NULL DEFAULT '[]', payment_network TEXT, card_tier TEXT,
+                cardholder_name TEXT, shows_cardholder_name INTEGER, card_suffix TEXT,
+                masks_card_suffix INTEGER, chip_style TEXT, shows_nfc INTEGER
+            );
+            """
+        ]),
+        MigrationStep(version: 7, statements: [
+            """
+            CREATE TABLE account_appearances_v7 (
+                account_id TEXT PRIMARY KEY NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+                theme_preset TEXT NOT NULL, accent_tint TEXT NOT NULL, badge_icon TEXT NOT NULL,
+                tags_json TEXT NOT NULL DEFAULT '[]', payment_network TEXT
+            );
+            """,
+            """
+            INSERT INTO account_appearances_v7
+                (account_id, theme_preset, accent_tint, badge_icon, tags_json, payment_network)
+            SELECT account_id, theme_preset, accent_tint, badge_icon, tags_json, payment_network
+            FROM account_appearances;
+            """,
+            "DROP TABLE account_appearances;",
+            "ALTER TABLE account_appearances_v7 RENAME TO account_appearances;"
+        ]),
+        MigrationStep(version: 8, statements: [])
     ]
 
     func runMigrations() throws {
@@ -252,6 +289,7 @@ extension DatabaseConnection {
                 if step.version == 3 {
                     try seedSystemInstitutions()
                 }
+                if step.version == 8 { try CashflowSchema.install(self) }
                 try setUserVersion(step.version)
             }
         }

@@ -3,6 +3,7 @@ import SwiftUI
 struct AccountFormView: View {
     let session: AppSession
     let existingAccount: Account?
+    let focusBalance: Bool
 
     @EnvironmentObject var preferences: AppPreferences
     @Environment(\.dismiss) private var dismiss
@@ -16,10 +17,12 @@ struct AccountFormView: View {
     @State private var specifyDate: Bool
     @State private var balanceDate: Date
     @State private var errorMessage: String?
+    @FocusState private var balanceIsFocused: Bool
 
-    init(session: AppSession, existingAccount: Account?) {
+    init(session: AppSession, existingAccount: Account?, focusBalance: Bool = false) {
         self.session = session
         self.existingAccount = existingAccount
+        self.focusBalance = focusBalance
         _country = State(initialValue: existingAccount?.country ?? .kz)
         _type = State(initialValue: existingAccount?.type ?? .bankAccount)
         if let institutionId = existingAccount?.institutionId {
@@ -65,6 +68,7 @@ struct AccountFormView: View {
             }
 
             TextField(preferences.string(.balanceTodayFieldLabel), text: $balanceText)
+                .focused($balanceIsFocused)
 
             TextField(preferences.string(.accountNameFieldLabel), text: $name)
 
@@ -84,6 +88,7 @@ struct AccountFormView: View {
         }
         .padding(24)
         .frame(minWidth: 420, minHeight: 420)
+        .onAppear { balanceIsFocused = focusBalance }
     }
 
     private func save() {
@@ -116,6 +121,7 @@ struct AccountFormView: View {
         switch result {
         case .success:
             errorMessage = nil
+            session.ledgerChanged()
             dismiss()
         case .failure(.negativeBalance):
             errorMessage = preferences.string(.negativeBalanceMessage)
@@ -123,6 +129,8 @@ struct AccountFormView: View {
             errorMessage = preferences.string(.tooManyDecimalDigitsMessage)
         case .failure(.institutionRequired):
             errorMessage = preferences.string(.institutionRequiredMessage)
+        case .failure(.currencyHasPostings):
+            errorMessage = preferences.flowText("Для счёта с операциями нельзя менять валюту. Создайте отдельный счёт.", "An account with postings cannot change currency. Create another account.")
         case .failure:
             errorMessage = preferences.string(.invalidCustomBankNameMessage)
         }

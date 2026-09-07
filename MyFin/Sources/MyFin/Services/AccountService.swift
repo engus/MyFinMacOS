@@ -12,13 +12,29 @@ final class AccountService {
     }
 
     func createAccount(
+        country: Country, type: AccountType, institutionSelection: InstitutionSelection,
+        currency: Currency, openingBalance: Decimal, name: String, balanceDate: Date?,
+        appearance: AccountAppearance = AccountAppearance()
+    ) -> Result<Account, AccountError> {
+        do {
+            return .success(try connection.withTransaction {
+                try createAccountInTransaction(country: country, type: type, institutionSelection: institutionSelection,
+                    currency: currency, openingBalance: openingBalance, name: name,
+                    balanceDate: balanceDate, appearance: appearance).get()
+            })
+        } catch let error as AccountError { return .failure(error) }
+        catch { return .failure(.notFound) }
+    }
+
+    private func createAccountInTransaction(
         country: Country,
         type: AccountType,
         institutionSelection: InstitutionSelection,
         currency: Currency,
         openingBalance: Decimal,
         name: String,
-        balanceDate: Date?
+        balanceDate: Date?,
+        appearance: AccountAppearance = AccountAppearance()
     ) -> Result<Account, AccountError> {
         guard openingBalance >= 0 else { return .failure(.negativeBalance) }
         guard Self.decimalPlaces(of: openingBalance) <= 8 else { return .failure(.tooManyDecimalDigits) }
@@ -62,7 +78,7 @@ final class AccountService {
         }
 
         do {
-            try connection.withTransaction {
+            do {
                 try connection.execute(
                     """
                     INSERT INTO accounts (id, name, country, type, currency, opening_balance, balance_date, institution_id, archived, created_at, updated_at)
@@ -80,9 +96,12 @@ final class AccountService {
                         params: [.text(UUID().uuidString), .text(id), .text(Self.decimalString(openingBalance)), .text(balanceDateString), .text(nowString)]
                     )
                 }
+                try insertAppearance(appearance.sanitized(for: type), accountId: id)
+                try CashflowService(db: connection, now: now).opening(accountID: id, amount: openingBalance,
+                    currency: currency, date: FlowDate.key(resolvedDate))
                 try connection.execute(
-                    "INSERT INTO balance_history (id, account_id, balance, recorded_at) VALUES (?, ?, ?, ?);",
-                    params: [.text(UUID().uuidString), .text(id), .text(Self.decimalString(openingBalance)), .text(nowString)]
+                    "INSERT INTO balance_history (id, account_id, balance, recorded_at, currency) VALUES (?, ?, ?, ?, ?);",
+                    params: [.text(UUID().uuidString), .text(id), .text(Self.decimalString(openingBalance)), .text(nowString), .text(currency.rawValue)]
                 )
             }
         } catch {
@@ -92,7 +111,7 @@ final class AccountService {
         return .success(Account(
             id: id, name: finalName, country: country, type: type, currency: currency,
             openingBalance: openingBalance, balanceDate: resolvedDate, institutionId: institutionId,
-            archived: false, createdAt: now(), updatedAt: now()
+            archived: false, createdAt: now(), updatedAt: now(), appearance: appearance.sanitized(for: type)
         ))
     }
 
@@ -101,6 +120,29 @@ final class AccountService {
         var result = Decimal()
         NSDecimalRound(&result, &value, 8, .plain)
         return "\(result)"
+    }
+
+    private func insertAppearance(_ value: AccountAppearance, accountId: String) throws {
+        func text(_ value: String?) -> SQLValue { value.map(SQLValue.text) ?? .null }
+        let tags = String(data: try JSONEncoder().encode(value.tags), encoding: .utf8) ?? "[]"
+        try connection.execute("""
+            INSERT INTO account_appearances
+            (account_id, theme_preset, accent_tint, badge_icon, tags_json, payment_network)
+            VALUES (?, ?, ?, ?, ?, ?);
+            """, params: [.text(accountId), .text(value.themePreset.rawValue), .text(value.accentTint.rawValue),
+                .text(value.badgeIcon.rawValue), .text(tags), text(value.paymentNetwork?.rawValue)])
+    }
+
+    private func fetchAppearance(accountId: String) -> AccountAppearance {
+        guard let row = (try? connection.query("SELECT * FROM account_appearances WHERE account_id = ?;", params: [.text(accountId)]))?.first else { return AccountAppearance() }
+        func text(_ key: String) -> String? { if case .text(let value)? = row[key] { return value }; return nil }
+        var value = AccountAppearance()
+        value.themePreset = text("theme_preset").flatMap(AccountThemePreset.init(rawValue:)) ?? .obsidianMatte
+        value.accentTint = text("accent_tint").flatMap(AccountAccentTint.init(rawValue:)) ?? .blue
+        value.badgeIcon = text("badge_icon").flatMap(AccountBadgeIcon.init(rawValue:)) ?? .card
+        value.tags = text("tags_json").flatMap { $0.data(using: .utf8) }.flatMap { try? JSONDecoder().decode([String].self, from: $0) } ?? []
+        value.paymentNetwork = text("payment_network").map { PaymentNetwork(rawValue: $0) ?? .mastercard }
+        return value
     }
 
     static func decimalPlaces(of value: Decimal) -> Int {
@@ -116,6 +158,16 @@ extension AccountService {
         guard let existingAccount = fetchAccount(id: id) else { return .failure(.notFound) }
         guard openingBalance >= 0 else { return .failure(.negativeBalance) }
         guard Self.decimalPlaces(of: openingBalance) <= 8 else { return .failure(.tooManyDecimalDigits) }
+
+        if currency != existingAccount.currency {
+            let ledger = CashflowService(db: connection, now: now)
+            do {
+                let linked = try connection.query("SELECT DISTINCT operation_id FROM ledger_entries WHERE ledger_account_id = ?;", params: [.text("account:" + id)]).compactMap { $0.string("operation_id") }
+                if try ledger.operations().contains(where: { linked.contains($0.id) && $0.source != .opening }) ||
+                    ledger.templates().contains(where: { $0.accountID == id }) ||
+                    ledger.reconciliations().contains(where: { $0.accountID == id }) { return .failure(.currencyHasPostings) }
+            } catch { return .failure(.notFound) }
+        }
 
         var institutionId: String?
         if type != .cash {
@@ -133,18 +185,30 @@ extension AccountService {
         }
 
         let nowString = ISO8601DateFormatter().string(from: now())
-        _ = try? connection.execute(
-            "UPDATE accounts SET name = ?, country = ?, type = ?, currency = ?, institution_id = ?, opening_balance = ?, updated_at = ? WHERE id = ?;",
-            params: [
-                .text(name), .text(country.rawValue), .text(type.rawValue), .text(currency.rawValue),
-                institutionId.map(SQLValue.text) ?? .null, .text(Self.decimalString(openingBalance)), .text(nowString), .text(id)
-            ]
-        )
-        if openingBalance != existingAccount.openingBalance {
-            try? connection.execute(
-                "INSERT INTO balance_history (id, account_id, balance, recorded_at) VALUES (?, ?, ?, ?);",
-                params: [.text(UUID().uuidString), .text(id), .text(Self.decimalString(openingBalance)), .text(nowString)]
-            )
+        do {
+            try connection.withTransaction {
+                try connection.execute(
+                    "UPDATE accounts SET name = ?, country = ?, type = ?, currency = ?, institution_id = ?, updated_at = ? WHERE id = ?;",
+                    params: [
+                        .text(name), .text(country.rawValue), .text(type.rawValue), .text(currency.rawValue),
+                        institutionId.map(SQLValue.text) ?? .null, .text(nowString), .text(id)
+                    ]
+                )
+                let ledger = CashflowService(db: connection, now: now)
+                if currency != existingAccount.currency {
+                    // Preserve both currency histories with explicit equity postings.
+                    try ledger.opening(accountID: id, amount: -existingAccount.openingBalance, currency: existingAccount.currency, date: ledger.today)
+                    try ledger.opening(accountID: id, amount: openingBalance, currency: currency, date: ledger.today)
+                    try connection.execute(
+                        "INSERT INTO balance_history (id, account_id, balance, recorded_at, currency) VALUES (?, ?, ?, ?, ?);",
+                        params: [.text(UUID().uuidString), .text(id), .text(Self.decimalString(openingBalance)), .text(nowString), .text(currency.rawValue)]
+                    )
+                } else if openingBalance != existingAccount.openingBalance {
+                    try ledger.adjustBalance(accountID: id, currency: currency, target: openingBalance)
+                }
+            }
+        } catch {
+            return .failure(.notFound)
         }
         guard let updated = fetchAccount(id: id) else { return .failure(.notFound) }
         return .success(updated)
@@ -174,12 +238,18 @@ extension AccountService {
             ? "SELECT * FROM accounts ORDER BY created_at ASC;"
             : "SELECT * FROM accounts WHERE archived = 0 ORDER BY created_at ASC;"
         let rows = (try? connection.query(sql)) ?? []
-        return rows.compactMap(Self.rowToAccount)
+        return rows.compactMap(Self.rowToAccount).compactMap { account in
+            var account = account
+            account.appearance = fetchAppearance(accountId: account.id).sanitized(for: account.type)
+            guard let balance = try? CashflowService(db: connection, now: now).balance(accountID: account.id, currency: account.currency) else { return nil }
+            account.openingBalance = balance
+            return account
+        }
     }
 
     func balanceHistory(accountId: String) -> [BalanceHistoryEntry] {
         let rows = (try? connection.query(
-            "SELECT * FROM balance_history WHERE account_id = ? ORDER BY recorded_at ASC;",
+            "SELECT * FROM balance_history WHERE account_id = ? ORDER BY recorded_at ASC, rowid ASC;",
             params: [.text(accountId)]
         )) ?? []
         return rows.compactMap(Self.rowToBalanceHistoryEntry)
@@ -192,13 +262,19 @@ extension AccountService {
         else { return nil }
 
         let recordedAt = ISO8601DateFormatter().date(from: recordedAtRaw) ?? Date()
-        return BalanceHistoryEntry(id: id, balance: balance, recordedAt: recordedAt)
+        let currency: Currency?
+        if case let .text(raw)? = row["currency"] { currency = Currency(rawValue: raw) } else { currency = nil }
+        return BalanceHistoryEntry(id: id, balance: balance, recordedAt: recordedAt, currency: currency)
     }
 
     private func fetchAccount(id: String) -> Account? {
         guard let rows = try? connection.query("SELECT * FROM accounts WHERE id = ?;", params: [.text(id)]),
               let row = rows.first else { return nil }
-        return Self.rowToAccount(row)
+        guard var account = Self.rowToAccount(row) else { return nil }
+        account.appearance = fetchAppearance(accountId: id).sanitized(for: account.type)
+        guard let balance = try? CashflowService(db: connection, now: now).balance(accountID: id, currency: account.currency) else { return nil }
+        account.openingBalance = balance
+        return account
     }
 
     static func rowToAccount(_ row: [String: SQLValue]) -> Account? {

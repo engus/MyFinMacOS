@@ -15,6 +15,17 @@ final class AppSession: ObservableObject {
     @Published private(set) var baseCurrency: Currency = .usd
     @Published private(set) var sidebarGroupingMode: SidebarGroupingMode = .institution
     @Published private(set) var showOriginalCurrencies: Bool = false
+    @Published private(set) var ledgerRevision = 0
+    @Published private(set) var cashflowError: String?
+
+    func ledgerChanged() { ledgerRevision += 1 }
+    func materializeCashflow() {
+        guard let connection else { return }
+        do {
+            if try CashflowService(db: connection).materializeDue() > 0 { ledgerChanged() }
+            cashflowError = nil
+        } catch { cashflowError = error.localizedDescription; ledgerChanged() }
+    }
 
     private(set) var unlockedProfile: Profile?
     private(set) var connection: DatabaseConnection?
